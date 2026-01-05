@@ -1,0 +1,29 @@
+# ===== Web Framework =====
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+
+# ===== Validation =====
+pydantic==2.5.0
+
+# ===== LangChain Core =====
+langchain-community==0.0.30
+langchain-chroma==0.1.0
+langchain-google-genai==0.3.2
+
+# ===== Vector DB =====
+chromadb==0.4.20
+
+# ===== Google Gemini SDK =====
+google-generativeai==0.3.2
+
+# ===== File Upload =====
+pdfplumber==0.10.3
+python-multipart==0.0.6
+
+# ===== Utils =====
+python-dotenv==1.0.0
+tenacity==8.2.3
+python-dateutil==2.8.2
+
+# ===== Numeric =====
+numpy==1.26.0

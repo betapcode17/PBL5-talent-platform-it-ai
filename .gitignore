@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual env
+venv/
+.env
+
+# Chroma
+chroma_db/
+
+# Node (nếu có frontend)
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db

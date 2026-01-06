@@ -1,19 +1,21 @@
 # app/routers/matching.py
+from datetime import datetime
 from fastapi import APIRouter, HTTPException, Query, Request
-from typing import List
-from app.models.core import MatchedJob
-from app.models.responses import (
-    MatchInput, MatchResponse, ApplyJobInput, ApplicationResponse, ApplicationsResponse
+from typing import List, Optional
+from models.core import MatchedJob
+from models.responses import (
+    ApplicationItem, MatchInput, MatchResponse, ApplyJobInput, ApplicationResponse, ApplicationsResponse
 )
-from app.services.rag_matching import match_cv
-from app.services.db_utils import (
-    get_db_connection, get_cached_matches, insert_match_log,
+from services.chroma_utils import index_cv_extracts
+from services.rag_matching import match_cv
+from services.db_utils import (
+    get_all_cvs, get_db_connection, get_cached_matches, get_filtered_jobs, insert_cv_record, insert_match_log,
     insert_application, get_applications_by_cv, check_application_exists
 )
-from app.services.ai_analysis import generate_why_match
-from app.utils.date_utils import normalize_date
-from app.utils.validators import _to_int_job_id
-from app.utils.pdf_parser import parse_cv_input_string
+from services.ai_analysis import generate_why_match
+from utils.date_utils import normalize_date
+from utils.validators import _to_int_job_id
+from utils.pdf_parser import parse_cv_input_string
 import time
 import uuid
 import logging
@@ -182,7 +184,7 @@ async def match_cv_endpoint(input: MatchInput, request: Request):
         if not job_ids:
             job_details = []
         else:
-            from app.services.db_utils import get_job_details
+            from services.db_utils import get_job_details
             job_details = get_job_details(job_ids)
         # 3) Map chi tiết theo INT key (quan trọng)
         job_details_dict = {int(job.job_id): job for job in job_details if getattr(job, "job_id", None) is not None}

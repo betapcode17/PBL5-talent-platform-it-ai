@@ -6,7 +6,9 @@ import json
 from typing import Dict, List, Optional, Any
 from langchain_google_genai import ChatGoogleGenerativeAI
 import os
-from api_key_manager import get_next_api_key
+
+from services.api_key_manager import get_next_api_key
+
 
 # Initialize Gemini model with API key rotation
 def get_llm():

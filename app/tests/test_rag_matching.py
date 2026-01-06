@@ -7,8 +7,8 @@ Run with: poetry run pytest tests/test_rag_matching.py
 import pytest
 import asyncio
 import json
-from app.services.rag_matching import match_cv, get_rag_components
-from app.services.rag_helpers import _to_int_job_id, verify_job_id_consistency, _prefix_doc_with_id
+from services.rag_matching import match_cv, get_rag_components
+from services.rag_helpers import _to_int_job_id, verify_job_id_consistency, _prefix_doc_with_id
 from langchain_core.documents import Document
 from unittest.mock import Mock, patch
 

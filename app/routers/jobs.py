@@ -1,9 +1,9 @@
 # app/routers/jobs.py
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 from typing import Dict, Any
-from app.models.responses import JobSearchInput, JobSearchResponse
-from app.services.db_utils import get_db_connection
-from app.services.ai_analysis import get_llm
+from models.responses import JobSearchInput, JobSearchResponse, JobSearchResult
+from services.db_utils import get_db_connection
+from services.ai_analysis import get_llm
 import json
 import logging
 from datetime import datetime, timedelta
@@ -296,7 +296,7 @@ async def generate_chart_insights(request: Dict[str, Any]):
         if not chart_type or not data:
             return {"analysis": "Thiếu thông tin biểu đồ để phân tích."}
         # Import LLM from ai_analysis
-        from app.services.ai_analysis import get_llm
+        from services.ai_analysis import get_llm
         llm_instance = get_llm()
         # Create prompt based on chart type
         if chart_type == "top_jobs":

@@ -2,11 +2,11 @@
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse, Response
 from typing import Dict, Any, Optional
-from app.models.responses import (
-    SuggestQuestionsInput, SuggestQuestionsResponse, DocumentPreviewResponse
+from models.responses import (
+    QuestionSuggestion, SuggestQuestionsInput, SuggestQuestionsResponse, DocumentPreviewResponse
 )
-from app.services.db_utils import get_db_connection, get_document_preview, save_document_preview
-from app.services.ai_analysis import generate_question_suggestions
+from services.db_utils import get_db_connection, get_document_preview, save_document_preview
+from services.ai_analysis import generate_question_suggestions
 import os
 import json
 import logging

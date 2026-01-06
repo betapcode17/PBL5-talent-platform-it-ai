@@ -9,8 +9,8 @@ import json
 import logging
 from langchain_core.documents import Document
 from typing import List
-from app.services.chroma_utils import get_vectorstore
-from app.services.db_utils import get_db_connection
+from services.chroma_utils import get_vectorstore
+from services.db_utils import get_db_connection
 
 def _to_int_job_id(x):
     """Chuyển job_id về int an toàn (nhận int, '716', 'job_716'...)."""

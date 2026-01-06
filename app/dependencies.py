@@ -1,7 +1,7 @@
-from app.services.db_utils import get_db_connection
-from app.services.ai_analysis import get_llm
-from app.services.chroma_utils import get_vectorstore
-from app.services.api_key_manager import get_next_api_key
+from services.db_utils import get_db_connection
+from services.ai_analysis import get_llm
+from services.chroma_utils import get_vectorstore
+from services.api_key_manager import get_next_api_key
 
 def get_db():
     return get_db_connection()

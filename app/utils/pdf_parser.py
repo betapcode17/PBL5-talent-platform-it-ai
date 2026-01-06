@@ -1,10 +1,11 @@
+import os
 import pdfplumber
 import google.generativeai as genai
 import re
 import json
 from tenacity import retry, stop_after_attempt, wait_exponential
 from fastapi import HTTPException
-from app.config import GOOGLE_API_KEY
+from config import GOOGLE_API_KEY
 import logging
 
 genai.configure(api_key=GOOGLE_API_KEY)
@@ -79,7 +80,7 @@ def extract_cv_info(cv_text: str) -> dict:
         cleaned = re.sub(r"```json|```", "", result).strip()
         cv_info = json.loads(cleaned)
         # Đảm bảo dữ liệu hợp lệ
-        from app.utils.date_utils import normalize_date
+        from utils.date_utils import normalize_date
         for exp in cv_info.get("experience", []):
             exp["company"] = exp.get("company") or "Unknown"
             exp["title"] = exp.get("title") or "Unknown"
@@ -119,7 +120,7 @@ def parse_cv_input_string(cv_input: str) -> dict:
         }
         # Giả định format: "Skills: ...; Aspirations: ...; Experience: ...; Education: ..."
         sections = re.split(r'(Skills|Aspirations|Experience|Education|Name|Email|Phone):', cv_input, flags=re.IGNORECASE)
-        from app.utils.date_utils import normalize_date
+        from utils.date_utils import normalize_date
         for i in range(1, len(sections), 2):
             key = sections[i].lower()
             value = sections[i + 1].strip()

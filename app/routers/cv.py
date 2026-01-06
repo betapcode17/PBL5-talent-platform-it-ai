@@ -1,16 +1,16 @@
 # app/routers/cv.py
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from typing import Dict, List
-from app.models.core import DocumentInfo, DeleteFileRequest
-from app.models.responses import CVInsightsResponse, CVImproveResponse
-from app.services.db_utils import (
+from models.core import DocumentInfo, DeleteFileRequest
+from models.responses import CVInsightsResponse, CVImproveResponse, ImprovementSuggestion
+from services.db_utils import (
     get_db_connection, insert_cv_record, get_all_cvs, delete_cv_record,
     get_cv_insights, save_cv_insights
 )
-from app.services.chroma_utils import index_cv_extracts, delete_cv_from_chroma
-from app.services.ai_analysis import analyze_cv_insights, generate_cv_improvements
-from app.utils.pdf_parser import extract_text_from_pdf, extract_cv_info
-from app.utils.date_utils import normalize_date
+from services.chroma_utils import index_cv_extracts, delete_cv_from_chroma
+from services.ai_analysis import analyze_cv_insights, generate_cv_improvements
+from utils.pdf_parser import extract_text_from_pdf, extract_cv_info
+from utils.date_utils import normalize_date
 import os
 import json
 import logging

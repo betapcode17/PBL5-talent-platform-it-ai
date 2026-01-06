@@ -1,0 +1,54 @@
+[tool.poetry]
+name = "ai-cv-job-matcher"
+version = "0.1.0"
+description = "AI-powered CV-Job Matching System using FastAPI, LangChain, and Gemini API"
+authors = ["betapcode17 <quocdat19991712@gmail.com>"]
+readme = "README.md"
+
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.115.0"
+uvicorn = {extras = ["standard"], version = "^0.30.0"}
+pydantic = {extras = ["email"], version = "^2.9.2"}
+
+# CẤU HÌNH LANGCHAIN ĐÃ ĐIỀU CHỈNH
+langchain = "0.1.17"  # Phiên bản mới hơn, hỗ trợ tenacity 9.x
+langchain-core = "0.1.70"  # Tương thích với langchain 0.1.x
+langchain-community = "0.1.16"  # Phiên bản tương thích
+langchain-chroma = "0.1.4"  # Giữ nguyên
+langchain-google-genai = "0.0.11"  # Tương thích
+
+# Các dependencies khác - CỐ ĐỊNH PHIÊN BẢN
+chromadb = "0.5.0"
+google-generativeai = "0.5.0"
+pdfplumber = "0.11.4"
+python-multipart = "0.0.9"
+python-dotenv = "1.0.1"
+tenacity = "8.2.3"  # Downgrade về 8.x để tương thích
+python-dateutil = "2.9.0"
+
+# numpy và opencv
+numpy = "1.24.3"
+opencv-python-headless = "4.8.1.78"
+
+aiofiles = "24.1.0"
+pandas = "2.2.2"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.3"
+pytest-asyncio = "^0.24.0"
+httpx = "^0.27.2"
+black = "^24.8.0"
+isort = "^5.13.2"
+mypy = "^1.11.2"
+pre-commit = "^3.7.1"
+
+[build-system]
+requires = ["poetry-core>=1.7.0"]
+build-backend = "poetry.core.masonry.api"

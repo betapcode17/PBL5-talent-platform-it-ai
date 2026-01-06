@@ -1,29 +1,18 @@
-# ===== Web Framework =====
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-
-# ===== Validation =====
-pydantic==2.5.0
-
-# ===== LangChain Core =====
-langchain-community==0.0.30
-langchain-chroma==0.1.0
-langchain-google-genai==0.3.2
-
-# ===== Vector DB =====
-chromadb==0.4.20
-
-# ===== Google Gemini SDK =====
-google-generativeai==0.3.2
-
-# ===== File Upload =====
-pdfplumber==0.10.3
-python-multipart==0.0.6
-
-# ===== Utils =====
-python-dotenv==1.0.0
+fastapi==0.115.0
+uvicorn[standard]==0.30.0
+pydantic[email]==2.9.2
+langchain==0.0.353
+langchain-community==0.0.27
+langchain-chroma==0.0.5
+langchain-google-genai==0.0.10
+chromadb==0.4.22
+google-generativeai==0.5.0
+pdfplumber==0.11.0
+python-multipart==0.0.9
+python-dotenv==1.0.1
 tenacity==8.2.3
 python-dateutil==2.8.2
-
-# ===== Numeric =====
-numpy==1.26.0
+numpy==1.24.3
+opencv-python-headless==4.8.1.78
+pandas==2.1.4
+aiofiles==23.2.1

@@ -76,6 +76,7 @@ app.include_router(utils_router, tags=["Utils"])
 # =========================
 # ROOT ENDPOINT
 # =========================
+# uvicorn main:app --reload
 @app.get("/")
 async def root():
     return {"message": "CV Matching API is running!"}

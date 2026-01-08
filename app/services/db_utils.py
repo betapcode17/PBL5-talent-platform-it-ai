@@ -390,3 +390,20 @@ def get_total_jobs() -> int:
         cursor = conn.cursor()
         cursor.execute("SELECT COUNT(*) FROM job_store")
         return cursor.fetchone()[0]
+    
+def get_jobs_details_by_ids(job_ids: List[int]) -> List[Dict]:
+    """
+    Lấy chi tiết nhiều jobs theo danh sách job_id
+    """
+    if not job_ids or not all(isinstance(i, int) for i in job_ids):
+        raise ValueError("job_ids must be a list of integers")
+
+    placeholders = ",".join(["?"] * len(job_ids))
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            f"SELECT * FROM job_store WHERE id IN ({placeholders})",
+            job_ids
+        )
+        return [dict(row) for row in cursor.fetchall()]

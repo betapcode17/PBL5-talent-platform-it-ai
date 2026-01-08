@@ -38,3 +38,37 @@ def normalize_deadline(val: str) -> str:
         except Exception:
             return ""
     return ""
+
+
+def normalize_explanation(raw):
+    """
+    Convert ANY LLM output into MatchExplanation-compatible dict
+    """
+    if raw is None:
+        return {}
+
+    # Nếu là string → nhét vào experience
+    if isinstance(raw, str):
+        return {
+            "skills": {},
+            "experience": raw,
+            "education": "",
+            "aspirations": ""
+        }
+
+    # Nếu là dict → xử lý từng field
+    if isinstance(raw, dict):
+        normalized = {}
+        for key in ["skills", "experience", "education", "aspirations"]:
+            val = raw.get(key)
+
+            if isinstance(val, str):
+                normalized[key] = val
+            elif isinstance(val, dict):
+                normalized[key] = val
+            else:
+                normalized[key] = ""
+
+        return normalized
+
+    return {}

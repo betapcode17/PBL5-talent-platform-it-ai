@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 from .core import Education, Experience, MatchedJob, Suggestion, ModelName, DeleteFileRequest, DocumentInfo, DocumentListResponse, MatchInput, JobDetails
 
 class MatchResponse(BaseModel):
@@ -128,3 +128,39 @@ class QuestionSuggestion(BaseModel):
 class SuggestQuestionsResponse(BaseModel):
     """Response cho endpoint /suggest-questions"""
     suggestions: List[QuestionSuggestion] = Field(..., description="Danh sách câu hỏi gợi ý")
+
+
+
+class MatchExplanationPart(BaseModel):
+    matched: List[str] = Field(default_factory=list)
+    missing: List[str] = Field(default_factory=list)
+
+
+class MatchExplanation(BaseModel):
+    skills: Union[MatchExplanationPart, str, dict] = Field(default_factory=dict)
+    experience: Union[MatchExplanationPart, str, dict] = ""
+    education: Union[MatchExplanationPart, str, dict] = ""
+    aspirations: Union[MatchExplanationPart, str, dict] = ""
+
+
+class MatchedJob(BaseModel):
+    job_id: str
+    job_title: str
+    job_url: str
+
+    work_location: str
+    salary: str
+    deadline: str
+    benefits: str
+    job_type: str
+    experience_required: str
+    education_required: str
+    company_name: str
+    skills: List[str]
+
+    match_score: float
+
+    explanation: MatchExplanation
+    why_match: str
+
+    job_description: str

@@ -276,6 +276,7 @@ async def get_jobs_analytics():
         logging.error(f"❌ Lỗi phân tích jobs: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Lỗi phân tích: {str(e)}")
 
+
 @router.post("/analytics/insights")
 async def generate_chart_insights(request: Dict[str, Any]):
     """
@@ -295,75 +296,39 @@ async def generate_chart_insights(request: Dict[str, Any]):
         data = request.get("data", [])
         if not chart_type or not data:
             return {"analysis": "Thiếu thông tin biểu đồ để phân tích."}
+        
         # Import LLM from ai_analysis
         from services.ai_analysis import get_llm
         llm_instance = get_llm()
-        # Create prompt based on chart type
+        
+        # Import chart prompts
+        from prompts import chart_insights_prompts
+        
+        # Get prompt for chart_type
+        prompt_template = chart_insights_prompts.get(chart_type)
+        if not prompt_template:
+            return {"analysis": "Loại biểu đồ không hợp lệ."}
+        
+        # Format data_str
         if chart_type == "top_jobs":
             data_str = "\n".join([f"- {item.get('title', 'N/A')}: {item.get('count', 0)} việc làm" for item in data[:10]])
-            prompt = f"""Bạn là chuyên gia phân tích thị trường việc làm. Phân tích biểu đồ "Top 10 Vị Trí Tuyển Dụng Nhiều Nhất" dựa trên dữ liệu sau:
-{data_str}
-Cung cấp phân tích ngắn gọn dưới dạng văn bản liên tục (3-4 câu), không sử dụng tiêu đề chào hỏi, không đánh số hoặc bullet points, chỉ tập trung vào nội dung chính:
-- Xu hướng tuyển dụng chính
-- Ngành nghề hot nhất
-- Cơ hội cho ứng viên
-- Lời khuyên
-Trả lời bằng tiếng Việt, chuyên nghiệp, súc tích."""
         elif chart_type == "top_companies":
             data_str = "\n".join([f"- {item.get('company', 'N/A')}: {item.get('count', 0)} việc làm" for item in data[:10]])
-            prompt = f"""Bạn là chuyên gia phân tích thị trường việc làm. Phân tích biểu đồ "Top 10 Công Ty Tuyển Dụng Nhiều Nhất" dựa trên dữ liệu sau:
-{data_str}
-Cung cấp phân tích ngắn gọn dưới dạng văn bản liên tục (3-4 câu), không sử dụng tiêu đề chào hỏi, không đánh số hoặc bullet points, chỉ tập trung vào nội dung chính:
-- Công ty đang mở rộng
-- Lĩnh vực kinh doanh
-- Cơ hội phát triển
-- Lời khuyên cho ứng viên
-Trả lời bằng tiếng Việt, chuyên nghiệp, súc tích."""
         elif chart_type == "location":
             data_str = "\n".join([f"- {item.get('location', 'N/A')}: {item.get('count', 0)} việc làm" for item in data[:10]])
-            prompt = f"""Bạn là chuyên gia phân tích thị trường việc làm. Phân tích biểu đồ "Phân Bố Địa Điểm Làm Việc" dựa trên dữ liệu sau:
-{data_str}
-Cung cấp phân tích ngắn gọn dưới dạng văn bản liên tục (3-4 câu), không sử dụng tiêu đề chào hỏi, không đánh số hoặc bullet points, chỉ tập trung vào nội dung chính:
-- Thành phố có nhiều cơ hội nhất
-- Xu hướng phân bố địa lý
-- So sánh các thành phố
-- Lời khuyên theo địa điểm
-Trả lời bằng tiếng Việt, chuyên nghiệp, súc tích."""
         elif chart_type == "job_type":
             data_str = "\n".join([f"- {item.get('type', 'N/A')}: {item.get('count', 0)} việc làm" for item in data])
-            prompt = f"""Bạn là chuyên gia phân tích thị trường việc làm. Phân tích biểu đồ "Phân Bố Loại Hình Công Việc" dựa trên dữ liệu sau:
-{data_str}
-Cung cấp phân tích ngắn gọn dưới dạng văn bản liên tục (3-4 câu), không sử dụng tiêu đề chào hỏi, không đánh số hoặc bullet points, chỉ tập trung vào nội dung chính:
-- Loại hình phổ biến nhất
-- Xu hướng remote/hybrid/onsite
-- Cơ hội freelance/part-time
-- Lời khuyên theo loại hình
-Trả lời bằng tiếng Việt, chuyên nghiệp, súc tích."""
         elif chart_type == "experience":
             data_str = "\n".join([f"- {item.get('experience', 'N/A')}: {item.get('count', 0)} việc làm" for item in data[:10]])
-            prompt = f"""Bạn là chuyên gia phân tích thị trường việc làm. Phân tích biểu đồ "Phân Bố Yêu Cầu Kinh Nghiệm" dựa trên dữ liệu sau:
-{data_str}
-Cung cấp phân tích ngắn gọn dưới dạng văn bản liên tục (3-4 câu), không sử dụng tiêu đề chào hỏi, không đánh số hoặc bullet points, chỉ tập trung vào nội dung chính:
-- Mức kinh nghiệm được yêu cầu nhiều
-- Cơ hội cho fresher vs experienced
-- Xu hướng tuyển dụng
-- Lời khuyên cho từng nhóm
-Trả lời bằng tiếng Việt, chuyên nghiệp, súc tích."""
         elif chart_type == "salary":
             data_str = "\n".join([f"- {item.get('salary', 'N/A')}: {item.get('count', 0)} việc làm" for item in data[:10]])
-            prompt = f"""Bạn là chuyên gia phân tích thị trường việc làm. Phân tích biểu đồ "Phân Bố Mức Lương" dựa trên dữ liệu sau:
-{data_str}
-Cung cấp phân tích ngắn gọn dưới dạng văn bản liên tục (3-4 câu), không sử dụng tiêu đề chào hỏi, không đánh số hoặc bullet points, chỉ tập trung vào nội dung chính:
-- Mức lương phổ biến
-- Xu hướng lương theo ngành
-- So sánh thị trường
-- Lời khuyên thương lượng lương
-Trả lời bằng tiếng Việt, chuyên nghiệp, súc tích."""
         else:
-            return {"analysis": "Loại biểu đồ không hợp lệ."}
-        # Call LLM with API key rotation
+            data_str = ""
+        
+        # Invoke prompt with data_str
+        formatted_prompt = prompt_template.format(data_str=data_str)
         logging.info(f"Generating analysis for chart type: {chart_type}")
-        response = await llm_instance.ainvoke(prompt)
+        response = await llm_instance.ainvoke(formatted_prompt)
         analysis = response.content.strip()
         logging.info(f"Generated analysis: {analysis[:100]}...")
         return {"analysis": analysis}

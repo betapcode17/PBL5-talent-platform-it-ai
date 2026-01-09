@@ -1,16 +1,18 @@
+
+
 import json
 import logging
-from typing import List
+from typing import List, Dict
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.output_parsers import JsonOutputParser
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.documents import Document
 from langchain_core.runnables import RunnableLambda
+from langchain_core.documents import Document
 
 from services.api_key_manager import get_next_api_key
 from services.chroma_utils import get_vectorstore
 from services.rag_helpers import _to_int_job_id, _prefix_doc_with_id
+from prompts import rewrite_prompt, qa_prompt 
 
 logging.basicConfig(level=logging.INFO)
 
@@ -24,67 +26,10 @@ def get_rag_components(model="gemini-2.5-flash"):
 
     retriever = get_vectorstore().as_retriever(search_kwargs={"k": 10})
 
-    rewrite_prompt = ChatPromptTemplate.from_messages([
-        ("system", "Rewrite CV info into a concise job search query."),
-        ("human", "{input}")
-    ])
-
+    # ---------- Rewrite chain ----------
     rewrite_chain = rewrite_prompt | llm | RunnableLambda(lambda x: x.content)
 
-    qa_prompt = ChatPromptTemplate.from_messages([
-    (
-        "system",
-        """
-You are a job matching assistant.
-Use ONLY the provided job postings context.
-Select top 5 most relevant jobs.
-
-Weights:
-- Skills: 50%
-- Experience: 30%
-- Aspirations: 10%
-- Education: 10%
-
-IMPORTANT:
-- job_id MUST come from JOB_ID in context
-- Do NOT invent data
-
-Return STRICT JSON ONLY:
-{{
-  "matched_jobs": [
-    {{
-      "job_id": int,
-      "job_title": str,
-      "job_url": str,
-      "match_score": float,
-      "matched_skills": [str],
-      "matched_aspirations": [str],
-      "matched_experience": [str],
-      "matched_education": [str],
-      "why_match": str,
-      "explanation": {{
-        "skills": str,
-        "experience": str,
-        "education": str,
-        "aspirations": str
-      }}
-    }}
-  ],
-  "suggestions": [
-    {{
-      "skill_or_experience": str,
-      "suggestion": str
-    }}
-  ]
-}}
-"""
-    ),
-    ("system", "Context (job postings):\n{context}"),
-    ("human", "Match jobs for CV with input:\n{input}")
-])
-
-
-
+    # ---------- QA chain ----------
     qa_chain = qa_prompt | llm | JsonOutputParser()
     return retriever, rewrite_chain, qa_chain
 

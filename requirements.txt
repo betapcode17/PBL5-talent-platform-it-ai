@@ -16,3 +16,6 @@ numpy==1.24.3
 opencv-python-headless==4.8.1.78
 pandas==2.1.4
 aiofiles==23.2.1
+
+
+# poetry add transformers torch sentencepiece

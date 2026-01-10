@@ -212,3 +212,38 @@ class JobDetails(BaseModel):
         except ValueError:
             raise ValueError("Invalid deadline date")
         return value
+    
+
+
+
+class MatchedCandidate(BaseModel):
+    """Model cho CV matching với job (reverse)."""
+    cv_id: int = Field(..., ge=1, description="ID CV từ cv_store")
+    name: str = Field(..., description="Tên ứng viên")
+    email: str = Field(..., description="Email")
+    phone: str = Field(..., description="Số điện thoại")
+    match_score: float = Field(..., ge=0.0, le=1.0, description="Điểm khớp (0-1)")
+    matched_skills: List[str] = Field(default_factory=list, description="Kỹ năng khớp với job")
+    matched_experience: List[str] = Field(default_factory=list, description="Kinh nghiệm khớp")
+    matched_education: List[str] = Field(default_factory=list, description="Học vấn khớp")
+    career_objective: str = Field(..., description="Mục tiêu nghề nghiệp")
+    education: List[Education] = Field(default_factory=list, description="Học vấn")
+    experience: List[Experience] = Field(default_factory=list, description="Kinh nghiệm")
+    why_match: Optional[str] = Field(None, description="Lý do matching (AI-generated, Vietnamese)")
+    cv_info_summary: Dict[str, Any] = Field(..., description="Tóm tắt CV JSON")
+
+class CandidateSearchInput(BaseModel):
+    """Input cho endpoint /candidates/search."""
+    job_description: str = Field(..., description="Mô tả job hoặc query tìm CV")
+    filters: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Bộ lọc CV. Allowed: 'experience_years' (int), 'education_level' (str), 'skills' (list), 'location' (str)."
+    )
+    limit: int = Field(20, ge=1, le=50, description="Số lượng CVs trả về")
+    model: Optional[str] = Field("gemini-2.5-flash", description="LLM model")
+
+class CandidateSearchResponse(BaseModel):
+    """Response cho /candidates/search."""
+    total: int = Field(..., description="Tổng số CVs matching")
+    candidates: List[MatchedCandidate] = Field(..., description="Danh sách CVs sorted by score")
+    suggestions: List[Suggestion] = Field(default_factory=list, description="Gợi ý cho recruiter")

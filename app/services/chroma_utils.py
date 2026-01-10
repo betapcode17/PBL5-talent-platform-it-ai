@@ -1,68 +1,81 @@
+# app/services/chroma_utils.py
+"""
+Chroma utilities for vector storage and job/CV preloading.
+Supports separate collections for jobs and CVs (for reverse matching).
+"""
+
+import os
 import json
 import logging
-import os
-from turtle import pd
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from langchain_chroma import Chroma
+from pathlib import Path
+from typing import List
 from langchain_core.documents import Document
+from langchain_chroma import Chroma
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+import pandas as pd  # Fixed: import pandas as pd (not from turtle)
 
-from services.db_utils import create_tables, get_db_connection
-
+from services.api_key_manager import get_next_api_key
+from services.db_utils import get_db_connection, create_tables
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-_vectorstore = None
+# Global instances for job and CV collections
+_job_vectorstore = None
+_cv_vectorstore = None
 
-def get_vectorstore():
+def get_vectorstore(collection_name: str = "jobs") -> Chroma:
     """
-    Khởi tạo Chroma vectorstore với Google Gemini Embedding API
-    Model: text-embedding-004 (miễn phí, hỗ trợ multilingual)
+    Khởi tạo Chroma vectorstore với Google Gemini Embedding API.
+    Separate collections: "jobs" (default), "cvs" for reverse matching.
+    Model: text-embedding-004 (miễn phí, hỗ trợ multilingual).
     """
-    global _vectorstore
-    if _vectorstore is None:
-        try:
-            # Lấy API key từ environment (use api_key_manager for rotation if needed)
-            from services.api_key_manager import get_next_api_key
-            google_api_key = get_next_api_key()
-            if not google_api_key:
-                raise ValueError("GOOGLE_API_KEY not found in environment variables")
-            base_dir = os.path.dirname(os.path.dirname(__file__))  # Go up to project root
-            chroma_path = os.path.join(base_dir, "db", "chroma_db")
-            os.makedirs(chroma_path, exist_ok=True)
-            # Sử dụng Google Gemini Embedding API
-            embedding_function = GoogleGenerativeAIEmbeddings(
-                model="models/text-embedding-004",
-                google_api_key=google_api_key,
-                task_type="retrieval_document"  # Tối ưu cho retrieval
-            )
-            _vectorstore = Chroma(
-                persist_directory=chroma_path,
-                embedding_function=embedding_function
-            )
-            logging.info("✅ Initialized Chroma vectorstore with Google Gemini Embedding API (text-embedding-004)")
-        except Exception as e:
-            logging.error(f"❌ Error initializing Chroma vectorstore: {e}")
-            raise
-    return _vectorstore
+    global _job_vectorstore, _cv_vectorstore
+    
+    if collection_name == "cvs":
+        if _cv_vectorstore is None:
+            _cv_vectorstore = _initialize_vectorstore("cvs")
+        return _cv_vectorstore
+    else:  # "jobs" default
+        if _job_vectorstore is None:
+            _job_vectorstore = _initialize_vectorstore("jobs")
+        return _job_vectorstore
 
-from pathlib import Path
-import os
-import logging
-import pandas as pd
-import json
+def _initialize_vectorstore(collection_name: str) -> Chroma:
+    """Internal init for a specific collection."""
+    try:
+        google_api_key = get_next_api_key()
+        if not google_api_key:
+            raise ValueError("GOOGLE_API_KEY not found in environment variables")
+        
+        base_dir = Path(__file__).resolve().parent.parent  # app/ -> root
+        chroma_path = base_dir / "db" / "chroma_db" / collection_name
+        chroma_path.mkdir(parents=True, exist_ok=True)
+        
+        embedding_function = GoogleGenerativeAIEmbeddings(
+            model="models/text-embedding-004",
+            google_api_key=google_api_key,
+            task_type="retrieval_document"  # Tối ưu cho retrieval
+        )
+        
+        vectorstore = Chroma(
+            persist_directory=str(chroma_path),
+            collection_name=collection_name,
+            embedding_function=embedding_function
+        )
+        logging.info(f"✅ Initialized Chroma vectorstore for '{collection_name}' with Google Gemini Embedding API")
+        return vectorstore
+    except Exception as e:
+        logging.error(f"❌ Error initializing Chroma for '{collection_name}': {e}")
+        raise
 
-
-def preload_jobs(csv_path, batch_size: int = 1000) -> bool:
+def preload_jobs(csv_path: str, batch_size: int = 1000) -> bool:
     """
-    Preload jobs from CSV file into SQLite and Chroma.
+    Preload jobs from CSV file into SQLite and Chroma (jobs collection).
     Accepts both str and Path.
     """
     try:
-        # ✅ Normalize to Path
         csv_path = Path(csv_path)
 
-        # ✅ Validate file
         if not csv_path.exists():
             logging.error(f"❌ File does not exist: {csv_path}")
             return False
@@ -72,11 +85,10 @@ def preload_jobs(csv_path, batch_size: int = 1000) -> bool:
 
         logging.info(f"📥 Preloading jobs from {csv_path}")
 
-        # Tạo bảng trước khi truy vấn
         create_tables()
         logging.info("✅ Ensured database tables are created")
 
-        vectorstore = get_vectorstore()
+        vectorstore = get_vectorstore("jobs")  # Use jobs collection
 
         with get_db_connection() as conn:
             cursor = conn.cursor()
@@ -86,7 +98,6 @@ def preload_jobs(csv_path, batch_size: int = 1000) -> bool:
                 logging.info("⏭️ Skipping preload: job_store already populated")
                 return True
 
-            # ✅ pandas accepts Path directly
             df = pd.read_csv(csv_path, encoding="utf-8-sig")
             logging.info(f"📄 Loaded {len(df)} jobs from CSV")
 
@@ -151,6 +162,7 @@ def preload_jobs(csv_path, batch_size: int = 1000) -> bool:
                         ]
 
                         page_content = (
+                            f"JOB_ID: {job_data['job_id']}\n"  # Prefix for prompt
                             f"{job_data['job_title']} "
                             f"{job_data['job_description']} "
                             f"{job_data['candidate_requirements']} "
@@ -164,15 +176,17 @@ def preload_jobs(csv_path, batch_size: int = 1000) -> bool:
 
                         if len(documents) >= batch_size:
                             vectorstore.add_documents(documents)
-                            logging.info(f"➕ Added batch of {len(documents)} to Chroma")
+                            logging.info(f"➕ Added batch of {len(documents)} to Chroma (jobs collection)")
                             documents.clear()
 
                 except Exception as row_err:
-                    logging.warning(f"⚠️ Skipping row {index}: {row_err}")
+                    # Safe logging for Vietnamese chars
+                    safe_err = str(row_err).encode('utf-8', errors='replace').decode('utf-8')
+                    logging.warning(f"⚠️ Skipping row {index}: {safe_err}")
 
             if documents:
                 vectorstore.add_documents(documents)
-                logging.info(f"➕ Added final batch of {len(documents)} to Chroma")
+                logging.info(f"➕ Added final batch of {len(documents)} to Chroma (jobs collection)")
 
             conn.commit()
             logging.info(f"✅ Preloaded {inserted_count} jobs successfully")
@@ -180,41 +194,50 @@ def preload_jobs(csv_path, batch_size: int = 1000) -> bool:
         return True
 
     except Exception as e:
-        logging.error(f"❌ Error preloading jobs from CSV: {e}", exc_info=True)
+        safe_e = str(e).encode('utf-8', errors='replace').decode('utf-8')
+        logging.error(f"❌ Error preloading jobs from CSV: {safe_e}", exc_info=True)
         return False
 
-    
 async def index_cv_extracts(skills: list, aspirations: str, experience: str, education: str, cv_id: int) -> bool:
+    """
+    Index CV extracts into Chroma (cvs collection for reverse matching).
+    """
     if not isinstance(cv_id, int):
         raise ValueError("cv_id must be an integer")
     try:
         content = (
+            f"CV_ID: {cv_id}\n"  # Prefix for prompt (similar to JOB_ID)
             f"Skills: {json.dumps(skills, ensure_ascii=False)} "
             f"Aspirations: {aspirations} "
             f"Experience: {experience} "
             f"Education: {education}"
         )
-        doc = Document(page_content=content, metadata={"cv_id": cv_id})
-        vectorstore = get_vectorstore()
+        doc = Document(page_content=content, metadata={"cv_id": cv_id, "type": "cv"})
+        vectorstore = get_vectorstore("cvs")  # Use CV collection
         vectorstore.add_documents([doc])
-        logging.info(f"Indexed CV {cv_id} into Chroma")
+        logging.info(f"✅ Indexed CV {cv_id} into Chroma (cvs collection)")
         return True
     except Exception as e:
-        logging.error(f"Error indexing CV {cv_id}: {e}")
+        safe_e = str(e).encode('utf-8', errors='replace').decode('utf-8')
+        logging.error(f"❌ Error indexing CV {cv_id}: {safe_e}")
         return False
 
 def delete_cv_from_chroma(cv_id: int) -> bool:
+    """
+    Delete CV from Chroma (cvs collection).
+    """
     if not isinstance(cv_id, int):
         raise ValueError("cv_id must be an integer")
     try:
-        vectorstore = get_vectorstore()
+        vectorstore = get_vectorstore("cvs")
         docs = vectorstore.get(where={"cv_id": cv_id})
         if not docs['ids']:
-            logging.info(f"No documents found for CV {cv_id}")
+            logging.info(f"ℹ️ No documents found for CV {cv_id}")
             return False
         vectorstore._collection.delete(where={"cv_id": cv_id})
-        logging.info(f"Deleted CV {cv_id} from Chroma")
+        logging.info(f"✅ Deleted CV {cv_id} from Chroma (cvs collection)")
         return True
     except Exception as e:
-        logging.error(f"Error deleting CV {cv_id} from Chroma: {e}")
+        safe_e = str(e).encode('utf-8', errors='replace').decode('utf-8')
+        logging.error(f"❌ Error deleting CV {cv_id} from Chroma: {safe_e}")
         return False

@@ -10,6 +10,7 @@ import logging
 from pathlib import Path
 from dotenv import load_dotenv
 
+
 # Calculate paths and load .env from root
 BASE_DIR = Path(__file__).resolve().parent  # app/
 PROJECT_ROOT = BASE_DIR.parent              # root (ai-cv-job-matcher/)
@@ -33,7 +34,7 @@ from routers.cv import router as cv_router
 from routers.jobs import router as jobs_router
 from routers.matching import router as matching_router
 from routers.utils import router as utils_router
-
+from routers import candidates
 # Import preload function
 from services.chroma_utils import preload_jobs as preload_jobs_to_chroma
 
@@ -58,7 +59,7 @@ app.include_router(cv_router, prefix="/cv", tags=["CV"])
 app.include_router(jobs_router, prefix="/jobs", tags=["Jobs"])
 app.include_router(matching_router, prefix="/matching", tags=["Matching"])
 app.include_router(utils_router, tags=["Utils"])
-
+app.include_router(candidates.router, prefix="/candidates", tags=["Candidates"])
 # @app.on_event("startup")
 # async def startup_event():
 #     print("🔄 STARTUP EVENT TRIGGERED")

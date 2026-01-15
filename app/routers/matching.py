@@ -95,15 +95,42 @@ async def match_cv_endpoint(input: MatchInput, request: Request):
         # 4. MATCH
         # --------------------------------------------------
         filtered_job_ids = get_filtered_jobs(cleaned_filters)
+        # Ensure filtered_job_ids is always a list of integers
+        if not isinstance(filtered_job_ids, list):
+            logging.warning(f"⚠️ filtered_job_ids không phải list: {type(filtered_job_ids)} = {filtered_job_ids}")
+            filtered_job_ids = []
+        # Validate all items are integers
+        filtered_job_ids = [int(jid) for jid in filtered_job_ids if isinstance(jid, (int, str)) and str(jid).isdigit()]
+        logging.info(f"✅ Filtered job IDs: {len(filtered_job_ids)} jobs")
+        
+        # 🔍 DEBUG: Log CV input
+        logging.info(f"🔍 CV Skills: {len(cv_input.get('skills', []))} skills")
+        logging.info(f"🔍 CV Experience length: {len(cv_input.get('experience', ''))} chars")
+        
         result = await match_cv(cv_input, filtered_job_ids, session_id)
+        
+        # 🔍 DEBUG: Log result
+        logging.info(f"🔍 RAG returned {len(result.get('matched_jobs', []))} matched jobs")
+        if not result.get("matched_jobs"):
+            logging.error(f"❌ Không có matched_jobs từ RAG. Result keys: {result.keys()}")
 
         safe_jobs = [
             j for j in result.get("matched_jobs", [])
             if isinstance(j, dict) and "job_id" in j
         ]
+        
+        logging.info(f"🔍 After filtering: {len(safe_jobs)} safe jobs")
 
+        # Filter out None and invalid job IDs
         job_ids = [_to_int_job_id(j["job_id"]) for j in safe_jobs]
-        job_details = get_jobs_details_by_ids(job_ids)
+        job_ids = [jid for jid in job_ids if jid is not None and isinstance(jid, int)]
+        
+        if not job_ids:
+            logging.warning("⚠️ Không có job_id hợp lệ sau khi lọc")
+            job_details = []
+        else:
+            logging.info(f"✅ Lấy chi tiết cho {len(job_ids)} jobs")
+            job_details = get_jobs_details_by_ids(job_ids)
         job_map = {int(j["id"]): j for j in job_details}
 
         enriched_all_jobs = []

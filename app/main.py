@@ -60,19 +60,21 @@ app.include_router(jobs_router, prefix="/jobs", tags=["Jobs"])
 app.include_router(matching_router, prefix="/matching", tags=["Matching"])
 app.include_router(utils_router, tags=["Utils"])
 app.include_router(candidates.router, prefix="/candidates", tags=["Candidates"])
-# @app.on_event("startup")
-# async def startup_event():
-#     print("🔄 STARTUP EVENT TRIGGERED")
-#     try:
-#         logging.info(f"Preloading jobs from {DATA_PATH} into Chroma and SQLite...")
-#         success = preload_jobs_to_chroma(DATA_PATH, batch_size=500)
-#         if success:
-#             logging.info("✅ Preloading completed successfully")
-#         else:
-#             logging.warning("⚠️ Preloading skipped or failed (check logs)")
-#     except Exception as e:
-#         logging.exception(f"❌ Error during startup preload: {e}")
-#         raise  # Re-raise to prevent app start if critical
+
+@app.on_event("startup")
+async def startup_event():
+    print("🔄 STARTUP EVENT TRIGGERED")
+    try:
+        logging.info(f"Preloading jobs from {DATA_PATH} into Chroma and SQLite...")
+        success = preload_jobs_to_chroma(DATA_PATH, batch_size=500)
+        if success:
+            logging.info("✅ Preloading completed successfully")
+        else:
+            logging.warning("⚠️ Preloading skipped or failed (check logs)")
+    except Exception as e:
+        logging.exception(f"❌ Error during startup preload: {e}")
+        # Don't raise to allow app to start even if preload fails
+        logging.warning("⚠️ App starting without job preload")
 
 # =========================
 # ROOT ENDPOINT

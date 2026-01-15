@@ -55,6 +55,5 @@ Return STRICT JSON ONLY:
 """,
     ),
     ("system", "Context (job postings):\n{context}"),
-    MessagesPlaceholder("match_history"),
     ("human", "Match jobs for CV with input:\n{input}")
 ])

@@ -335,3 +335,87 @@ async def generate_chart_insights(request: Dict[str, Any]):
     except Exception as e:
         logging.error(f"Lỗi generate chart insights: {e}")
         return {"analysis": "Không thể tạo phân tích. Vui lòng thử lại sau."}
+
+
+@router.post("/reindex")
+async def reindex_jobs_to_chroma():
+    """
+    Force re-index tất cả jobs từ SQLite vào ChromaDB.
+    Sử dụng khi ChromaDB rỗng nhưng SQLite đã có data.
+    """
+    try:
+        from services.chroma_utils import get_vectorstore
+        from langchain_core.documents import Document
+        import json
+        
+        logging.info("🔄 Starting force re-index jobs to ChromaDB...")
+        
+        # Get vectorstore
+        vectorstore = get_vectorstore("jobs")
+        
+        # Get all jobs from SQLite
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM job_store")
+            jobs = cursor.fetchall()
+            
+        if not jobs:
+            return {
+                "success": False,
+                "message": "❌ Không có jobs trong database để index",
+                "total": 0
+            }
+        
+        logging.info(f"📦 Found {len(jobs)} jobs in SQLite")
+        
+        # Convert to documents
+        documents = []
+        for job_row in jobs:
+            job = dict(job_row)
+            
+            skills_list = [s.strip() for s in job.get("skills", "").split(",") if s.strip()]
+            
+            page_content = (
+                f"JOB_ID: {job['id']}\n"
+                f"{job.get('job_title', '')} "
+                f"{job.get('job_description', '')} "
+                f"{job.get('candidate_requirements', '')} "
+                f"{json.dumps(skills_list, ensure_ascii=False)}"
+            )
+            
+            # Add job_id to metadata
+            metadata = dict(job)
+            metadata["job_id"] = job["id"]
+            
+            documents.append(
+                Document(page_content=page_content, metadata=metadata)
+            )
+        
+        # Clear existing collection (optional)
+        try:
+            collection = vectorstore._collection
+            collection.delete(where={})  # Delete all
+            logging.info("🗑️ Cleared existing ChromaDB collection")
+        except Exception as e:
+            logging.warning(f"⚠️ Could not clear collection: {e}")
+        
+        # Add documents in batches
+        batch_size = 100
+        total_added = 0
+        for i in range(0, len(documents), batch_size):
+            batch = documents[i:i + batch_size]
+            vectorstore.add_documents(batch)
+            total_added += len(batch)
+            logging.info(f"➕ Added batch {i//batch_size + 1}: {total_added}/{len(documents)} documents")
+        
+        logging.info(f"✅ Successfully indexed {total_added} jobs to ChromaDB")
+        
+        return {
+            "success": True,
+            "message": f"✅ Đã index {total_added} jobs vào ChromaDB",
+            "total": total_added
+        }
+        
+    except Exception as e:
+        logging.exception(f"❌ Error re-indexing jobs: {e}")
+        raise HTTPException(status_code=500, detail=f"Lỗi re-index jobs: {str(e)}")

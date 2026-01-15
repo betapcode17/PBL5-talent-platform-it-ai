@@ -36,6 +36,15 @@ def get_rag_components(model="gemini-2.5-flash"):
 
 async def match_cv(cv: dict, filtered_job_ids: List[int], session_id: str):
     try:
+        # Validate input
+        if not isinstance(filtered_job_ids, list):
+            logging.error(f"❌ filtered_job_ids phải là list, nhận được: {type(filtered_job_ids)}")
+            filtered_job_ids = []
+        
+        # Ensure all elements are integers
+        filtered_job_ids = [int(jid) for jid in filtered_job_ids if isinstance(jid, (int, str)) and str(jid).isdigit()]
+        logging.info(f"🔍 Matching với {len(filtered_job_ids)} filtered jobs")
+        
         query = json.dumps(cv, ensure_ascii=False)
 
         retriever, rewrite_chain, qa_chain = get_rag_components()
@@ -44,7 +53,9 @@ async def match_cv(cv: dict, filtered_job_ids: List[int], session_id: str):
         rewritten = await rewrite_chain.ainvoke({"input": query})
 
         if filtered_job_ids:
+            logging.info(f"🔍 Querying ChromaDB with {len(filtered_job_ids)} filtered job IDs")
             raw = vectorstore.get(where={"job_id": {"$in": [str(i) for i in filtered_job_ids]}})
+            logging.info(f"🔍 ChromaDB returned {len(raw.get('metadatas', []))} documents")
             docs = [
                 _prefix_doc_with_id(
                     Document(page_content=m.get("content", ""), metadata=m)
@@ -53,13 +64,28 @@ async def match_cv(cv: dict, filtered_job_ids: List[int], session_id: str):
                 if str(m.get("job_id", "")).isdigit()
             ]
         else:
+            logging.info(f"🔍 Using retriever for semantic search (no filters)")
             docs = retriever.invoke(rewritten)
+            logging.info(f"🔍 Retriever returned {len(docs)} documents")
             docs = [_prefix_doc_with_id(d) for d in docs]
 
+        logging.info(f"🔍 Sending {len(docs)} docs to LLM for matching")
+        if not docs:
+            logging.error("❌ Không có documents để match! ChromaDB có thể chưa được index.")
+            return {
+                "matched_jobs": [],
+                "suggestions": [{
+                    "skill_or_experience": "N/A",
+                    "suggestion": "Không tìm thấy công việc trong hệ thống. Vui lòng kiểm tra database và ChromaDB index."
+                }]
+            }
+        
         result = await qa_chain.ainvoke({
             "context": docs,
             "input": query
         })
+        
+        logging.info(f"🔍 LLM returned {len(result.get('matched_jobs', []))} matched jobs")
 
         normalized = []
         for job in result.get("matched_jobs", []):

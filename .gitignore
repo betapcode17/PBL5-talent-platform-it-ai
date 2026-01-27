@@ -17,3 +17,20 @@ node_modules/
 # OS
 .DS_Store
 Thumbs.db
+
+
+# datasets
+data/
+datasets/
+
+# models
+*.pt
+*.pth
+*.h5
+*.onnx
+
+# cache & output
+__pycache__/
+.cache/
+outputs/
+runs/

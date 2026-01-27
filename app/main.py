@@ -66,7 +66,7 @@ async def startup_event():
     print("🔄 STARTUP EVENT TRIGGERED")
     try:
         logging.info(f"Preloading jobs from {DATA_PATH} into Chroma and SQLite...")
-        success = preload_jobs_to_chroma(DATA_PATH, batch_size=500)
+        success = preload_jobs_to_chroma(DATA_PATH, batch_size=500) # type: ignore
         if success:
             logging.info("✅ Preloading completed successfully")
         else:

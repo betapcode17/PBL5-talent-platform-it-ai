@@ -849,3 +849,6 @@ KeyError: "Input to ChatPromptTemplate is missing variables {'match_history'}.  
 2026-01-15 14:51:31,025 - INFO - AFC is enabled with max remote calls: 10.
 2026-01-15 14:51:40,780 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:batchEmbedContents "HTTP/1.1 200 OK"
 2026-01-15 14:51:40,931 - INFO - AFC is enabled with max remote calls: 10.
+2026-01-20 15:46:19,640 - INFO - Preloading jobs from E:\HOCKI6\PBL5\AI\app\data\jobs_vietnamese.csv into Chroma and SQLite...
+2026-01-20 15:46:22,167 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-01-20 15:51:26,811 - INFO - AFC is enabled with max remote calls: 10.

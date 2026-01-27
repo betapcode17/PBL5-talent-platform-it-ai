@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional, Union
-from .core import Education, Experience, MatchedJob, Suggestion, ModelName, DeleteFileRequest, DocumentInfo, DocumentListResponse, MatchInput, JobDetails
+from .core import Education, Experience, MatchedJob, Suggestion, ModelName, DeleteFileRequest, DocumentInfo, DocumentListResponse, MatchInput, JobDetails # type: ignore
 
 class MatchResponse(BaseModel):
     name: Optional[str] = Field(None, description="Tên ứng viên")

@@ -21,10 +21,10 @@ router = APIRouter()
 @router.post("/upload")
 async def upload_cv(file: UploadFile = File(...)):
     """Tải lên CV PDF, trích xuất thông tin, lưu vào cv_store và Chroma."""
-    if not file.filename.lower().endswith('.pdf'):
+    if not file.filename.lower().endswith('.pdf'): # type: ignore
         raise HTTPException(status_code=400, detail="Only PDF files are supported")
     max_size = 10 * 1024 * 1024  # 10MB
-    if file.size > max_size:
+    if file.size > max_size: # type: ignore
         raise HTTPException(status_code=400, detail="File size exceeds 10MB")
     temp_file_path = f"temp_{file.filename}"
     file_data = None
@@ -48,7 +48,7 @@ async def upload_cv(file: UploadFile = File(...)):
             for exp in experience
         ]) if experience else "No experience provided"
         # Insert CV record with file_data
-        cv_id = insert_cv_record(file.filename, cv_info, file_data)
+        cv_id = insert_cv_record(file.filename, cv_info, file_data) # type: ignore
         if not cv_id:
             raise HTTPException(status_code=500, detail="Failed to generate cv_id from database")
         try:

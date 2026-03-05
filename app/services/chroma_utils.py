@@ -16,6 +16,7 @@ import pandas as pd  # Fixed: import pandas as pd (not from turtle)
 
 from services.api_key_manager import get_next_api_key
 from services.db_utils import get_db_connection, create_tables
+from services.pg_database import get_all_jobs
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -53,7 +54,7 @@ def _initialize_vectorstore(collection_name: str) -> Chroma:
         
         embedding_function = GoogleGenerativeAIEmbeddings(
             model="models/text-embedding-004",
-            google_api_key=google_api_key,
+            google_api_key=google_api_key, # type: ignore
             task_type="retrieval_document"  # Tối ưu cho retrieval
         )
         
@@ -74,13 +75,13 @@ def preload_jobs(csv_path: str, batch_size: int = 1000) -> bool:
     Accepts both str and Path.
     """
     try:
-        csv_path = Path(csv_path)
+        csv_path = Path(csv_path) # type: ignore
 
-        if not csv_path.exists():
+        if not csv_path.exists(): # type: ignore
             logging.error(f"❌ File does not exist: {csv_path}")
             return False
 
-        if csv_path.suffix.lower() != ".csv":
+        if csv_path.suffix.lower() != ".csv": # type: ignore
             raise ValueError(f"File must be .csv, got: {csv_path}")
 
         logging.info(f"📥 Preloading jobs from {csv_path}")
@@ -240,4 +241,69 @@ def delete_cv_from_chroma(cv_id: int) -> bool:
     except Exception as e:
         safe_e = str(e).encode('utf-8', errors='replace').decode('utf-8')
         logging.error(f"❌ Error deleting CV {cv_id} from Chroma: {safe_e}")
+        return False
+
+
+# ---------------------------------------------------------------------------
+# PostgreSQL-based preload
+# ---------------------------------------------------------------------------
+
+def preload_jobs_from_pg(batch_size: int = 500) -> bool:
+    """
+    Preload jobs from PostgreSQL (it_job_db) into ChromaDB.
+    Replaces the CSV-based preload for the RAG chatbot.
+    """
+    try:
+        vectorstore = get_vectorstore("jobs")
+
+        # Check if already populated
+        existing = vectorstore._collection.count()
+        if existing > 0:
+            logging.info(f"⏭️ Skipping PG preload: jobs collection already has {existing} documents")
+            return True
+
+        logging.info("📥 Preloading jobs from PostgreSQL into ChromaDB...")
+        jobs = get_all_jobs(limit=5000)
+
+        if not jobs:
+            logging.warning("⚠️ No jobs found in PostgreSQL")
+            return False
+
+        documents: List[Document] = []
+        for job in jobs:
+            skills_list = job.get("skills", [])
+            page_content = (
+                f"JOB_ID: {job['job_id']}\n"
+                f"{job.get('job_title', '')} "
+                f"{job.get('job_description', '') or ''} "
+                f"{job.get('candidate_requirements', '') or ''} "
+                f"{json.dumps(skills_list, ensure_ascii=False)}"
+            )
+            metadata = {
+                "job_id": job["job_id"],
+                "job_title": str(job.get("job_title", "")),
+                "company": str(job.get("company_name", "") or job.get("company_short_name", "")),
+                "location": str(job.get("work_location", "")),
+                "salary": str(job.get("salary", "")),
+                "experience": str(job.get("experience", "")),
+                "education": str(job.get("education", "")),
+                "work_type": str(job.get("work_type", "")),
+                "category": str(job.get("category_name", "")),
+                "skills": str(job.get("skills_text", "")),
+                "num_positions": int(job.get("number_of_hires", 1) or 1),
+            }
+            documents.append(Document(page_content=page_content, metadata=metadata))
+
+        # Add in batches
+        for i in range(0, len(documents), batch_size):
+            batch = documents[i: i + batch_size]
+            vectorstore.add_documents(batch)
+            logging.info(f"➕ Added batch {i // batch_size + 1} ({len(batch)} docs) to ChromaDB")
+
+        logging.info(f"✅ Preloaded {len(documents)} jobs from PostgreSQL into ChromaDB")
+        return True
+
+    except Exception as e:
+        safe_e = str(e).encode('utf-8', errors='replace').decode('utf-8')
+        logging.error(f"❌ Error preloading jobs from PostgreSQL: {safe_e}", exc_info=True)
         return False

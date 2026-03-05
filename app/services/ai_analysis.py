@@ -51,7 +51,7 @@ async def analyze_cv_insights(cv_info: Dict) -> Dict[str, Any]:
         
         # Invoke prompt
         response = await llm_instance.ainvoke(cv_analysis_prompt.format(**formatted_input))
-        content = response.content.strip()
+        content = response.content.strip() # type: ignore
         
         # Remove markdown code blocks if present
         if content.startswith("```json"):
@@ -132,7 +132,7 @@ async def generate_cv_improvements(cv_info: Dict, insights: Dict) -> List[Dict[s
         
         # Invoke prompt
         response = await llm_instance.ainvoke(cv_improvement_prompt.format(**formatted_input))
-        content = response.content.strip()
+        content = response.content.strip() # type: ignore
 
         # Remove markdown code blocks
         if content.startswith("```json"):

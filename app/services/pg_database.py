@@ -49,10 +49,10 @@ def test_connection() -> bool:
         with get_pg_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute("SELECT 1")
-                logger.info("✅ PostgreSQL connection OK")
+                logger.info(" PostgreSQL connection OK")
                 return True
     except Exception as e:
-        logger.error(f"❌ PostgreSQL connection failed: {e}")
+        logger.error(f" PostgreSQL connection failed: {e}")
         return False
 
 
@@ -123,7 +123,7 @@ def get_all_jobs(limit: int = 5000) -> List[Dict[str, Any]]:
         job["skills_text"] = ", ".join(job["skills"])
         results.append(job)
 
-    logger.info(f"📦 Fetched {len(results)} jobs from PostgreSQL")
+    logger.info(f" Fetched {len(results)} jobs from PostgreSQL")
     return results
 
 
@@ -153,7 +153,7 @@ def get_job_by_id(job_id: int) -> Optional[Dict[str, Any]]:
     """Fetch a single job post by ID."""
     query = """
         SELECT
-            jp.job_post_id AS job_id, jp.job_title, jp.job_description,
+            jp.job_post_id AS job_id, jp.job_title, jp.job_url, jp.job_description,
             jp.candidate_requirements, jp.benefits, jp.salary,
             jp.experience, jp.education,
             jp.number_of_hires, jp.deadline, jp.work_location,
@@ -181,44 +181,6 @@ def get_job_by_id(job_id: int) -> Optional[Dict[str, Any]]:
     job["skills"] = skills_map.get(job_id, [])
     job["skills_text"] = ", ".join(job["skills"])
     return job
-
-
-def search_jobs_by_keyword(keyword: str, limit: int = 20) -> List[Dict[str, Any]]:
-    """Full-text keyword search on job_title and job_description."""
-    query = """
-        SELECT
-            jp.job_post_id AS job_id, jp.job_title, jp.job_description,
-            jp.candidate_requirements, jp.salary, jp.work_location,
-            jp.experience,
-            c.company_name,
-            cat.name AS category_name,
-            jp.work_type::text AS work_type
-        FROM "JobPost" jp
-        LEFT JOIN "Company"  c   ON jp.company_id   = c.company_id
-        LEFT JOIN "Category" cat ON jp.category_id   = cat.category_id
-        WHERE jp.is_active = true
-          AND (jp.job_title ILIKE %s OR jp.job_description ILIKE %s)
-        ORDER BY jp.created_date DESC
-        LIMIT %s
-    """
-    pattern = f"%{keyword}%"
-    with get_pg_connection() as conn:
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute(query, (pattern, pattern, limit))
-            rows = cur.fetchall()
-
-    job_ids = [r["job_id"] for r in rows]
-    skills_map = _get_skills_for_jobs(job_ids) if job_ids else {}
-
-    results = []
-    for row in rows:
-        job = dict(row)
-        jid = job["job_id"]
-        job["skills"] = skills_map.get(jid, [])
-        job["skills_text"] = ", ".join(job["skills"])
-        results.append(job)
-
-    return results
 
 
 # ---------------------------------------------------------------------------
@@ -265,5 +227,5 @@ def get_job_stats() -> Dict[str, Any]:
                 {"name": r[0], "count": r[1]} for r in cur.fetchall()
             ]
 
-    logger.info(f"📊 Job stats: {stats['total_jobs']} active jobs, {stats['total_companies']} companies")
+    logger.info(f" Job stats: {stats['total_jobs']} active jobs, {stats['total_companies']} companies")
     return stats

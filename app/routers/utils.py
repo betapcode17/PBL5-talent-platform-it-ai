@@ -29,7 +29,7 @@ async def preview_document_pdf(file_id: int):
                 raise HTTPException(status_code=404, detail=f"File {file_id} không tìm thấy")
         # Nếu không có file_data (CV cũ), trả về placeholder
         if not row['file_data']:
-            logging.warning(f"⚠️ CV {file_id} không có file_data. Trả về placeholder.")
+            logging.warning(f" CV {file_id} không có file_data. Trả về placeholder.")
             return Response(
                 content=f"<html><body><h3>CV Preview không khả dụng</h3><p>File: {row['filename']}</p><p>Vui lòng upload lại CV để xem preview.</p></body></html>",
                 media_type="text/html"
@@ -41,7 +41,7 @@ async def preview_document_pdf(file_id: int):
         temp_file_path = os.path.join(temp_dir, f"cv_{file_id}.pdf")
         with open(temp_file_path, 'wb') as f:
             f.write(row['file_data'])
-        logging.info(f"✅ Tạo preview PDF cho file {file_id}")
+        logging.info(f" Tạo preview PDF cho file {file_id}")
         # Trả về PDF file với header inline để hiển thị trong browser
         return FileResponse(
             temp_file_path,
@@ -51,7 +51,7 @@ async def preview_document_pdf(file_id: int):
             }
         )
     except Exception as e:
-        logging.error(f"❌ Lỗi preview PDF: {str(e)}")
+        logging.error(f" Lỗi preview PDF: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Lỗi preview: {str(e)}")
 
 @router.get("/preview-doc-info/{file_id}", response_model=DocumentPreviewResponse)
@@ -64,7 +64,7 @@ async def preview_document_info(file_id: int):
         # Kiểm tra cache
         cached_preview = get_document_preview(file_id)
         if cached_preview:
-            logging.info(f"✅ Lấy preview từ cache cho file {file_id}")
+            logging.info(f" Lấy preview từ cache cho file {file_id}")
             # Lấy thông tin CV
             with get_db_connection() as conn:
                 cursor = conn.cursor()
@@ -109,7 +109,7 @@ async def preview_document_info(file_id: int):
                 "file_size": 0  # Placeholder
             }
             save_document_preview(file_id, preview_data)
-            logging.info(f"✅ Tạo preview mới cho file {file_id}")
+            logging.info(f" Tạo preview mới cho file {file_id}")
             return DocumentPreviewResponse(
                 file_id=file_id,
                 type="cv",
@@ -130,7 +130,7 @@ async def preview_document_info(file_id: int):
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"❌ Lỗi preview document: {str(e)}")
+        logging.error(f" Lỗi preview document: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Lỗi preview: {str(e)}")
 
 @router.post("/suggest-questions", response_model=SuggestQuestionsResponse)
@@ -166,8 +166,8 @@ async def suggest_questions_endpoint(input: SuggestQuestionsInput):
         question_items = [
             QuestionSuggestion(**q) for q in suggestions
         ]
-        logging.info(f"✅ Tạo {len(question_items)} gợi ý câu hỏi cho context '{context}'")
+        logging.info(f" Tạo {len(question_items)} gợi ý câu hỏi cho context '{context}'")
         return SuggestQuestionsResponse(suggestions=question_items)
     except Exception as e:
-        logging.error(f"❌ Lỗi tạo gợi ý câu hỏi: {str(e)}")
+        logging.error(f" Lỗi tạo gợi ý câu hỏi: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Lỗi tạo gợi ý: {str(e)}")

@@ -19,7 +19,7 @@ class LLMService:
     
     def __init__(
         self, 
-        model_name: str = "gemini-pro",
+        model_name: str = "gemini-2.5-flash",
         temperature: float = 0.7,
         max_tokens: int = 1024,
     ):
@@ -27,7 +27,7 @@ class LLMService:
         Initialize LLM Service
         
         Args:
-            model_name: Model Gemini yang digunakan (gemini-pro, gemini-pro-vision)
+            model_name: Model Gemini yang digunakan (gemini-2.5-flash, gemini-2.5-flash-vision)
             temperature: Creativity level (0.0-1.0, default 0.7)
             max_tokens: Max response length
         """
@@ -41,7 +41,7 @@ class LLMService:
         try:
             api_key = get_next_api_key()
             if not api_key:
-                raise ValueError("❌ GOOGLE_API_KEY not found")
+                raise ValueError(" GOOGLE_API_KEY not found")
             
             llm = ChatGoogleGenerativeAI(
                 model=self.model_name,
@@ -51,10 +51,10 @@ class LLMService:
                 convert_system_message_to_human=True,
                 timeout=30
             )
-            logger.info(f"✅ Initialized {self.model_name} with temperature={self.temperature}")
+            logger.info(f" Initialized {self.model_name} with temperature={self.temperature}")
             return llm
         except Exception as e:
-            logger.error(f"❌ Failed to initialize LLM: {e}")
+            logger.error(f" Failed to initialize LLM: {e}")
             raise
     
     def generate_response(
@@ -98,7 +98,7 @@ class LLMService:
             return response.content # type: ignore
             
         except Exception as e:
-            logger.error(f"❌ Error generating response: {e}")
+            logger.error(f" Error generating response: {e}")
             raise
     
     def generate_with_context(
@@ -168,7 +168,7 @@ Trả lời dưới dạng JSON:
                 return json.loads(json_str)
             return {}
         except Exception as e:
-            logger.warning(f"⚠️ Entity extraction failed: {e}")
+            logger.warning(f" Entity extraction failed: {e}")
             return {}
     
     def summarize(self, text: str, max_length: int = 200) -> str:
@@ -213,7 +213,7 @@ Trả lời dưới dạng JSON:
                 return json.loads(json_str)
             return {"match_percentage": 0, "recommendation": "Error"}
         except Exception as e:
-            logger.error(f"❌ Match rating failed: {e}")
+            logger.error(f" Match rating failed: {e}")
             return {"match_percentage": 0, "recommendation": "Error"}
 
 

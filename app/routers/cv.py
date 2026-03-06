@@ -129,7 +129,7 @@ async def get_cv_insights_endpoint(cv_id: int):
         # Kiểm tra cache
         cached_insights = get_cv_insights(cv_id)
         if cached_insights:
-            logging.info(f"✅ Lấy insights từ cache cho CV {cv_id}")
+            logging.info(f" Lấy insights từ cache cho CV {cv_id}")
             return CVInsightsResponse(
                 cv_id=cv_id,
                 quality_score=cached_insights['quality_score'],
@@ -150,11 +150,11 @@ async def get_cv_insights_endpoint(cv_id: int):
                 last_analyzed=cached_insights['last_analyzed']
             )
         # Phân tích mới bằng AI
-        logging.info(f"🔍 Bắt đầu phân tích CV {cv_id}...")
+        logging.info(f" Bắt đầu phân tích CV {cv_id}...")
         insights = await analyze_cv_insights(cv_info)
         # Lưu vào cache
         save_cv_insights(cv_id, insights)
-        logging.info(f"✅ Phân tích CV {cv_id} hoàn tất")
+        logging.info(f" Phân tích CV {cv_id} hoàn tất")
         return CVInsightsResponse(
             cv_id=cv_id,
             quality_score=insights.get('quality_score', 5.0),
@@ -177,7 +177,7 @@ async def get_cv_insights_endpoint(cv_id: int):
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"❌ Lỗi phân tích CV {cv_id}: {str(e)}")
+        logging.error(f" Lỗi phân tích CV {cv_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Lỗi phân tích CV: {str(e)}")
 
 @router.post("/improve", response_model=CVImproveResponse)
@@ -204,12 +204,12 @@ async def improve_cv_endpoint(cv_id: int):
             save_cv_insights(cv_id, insights_data)
             insights = insights_data
         # Tạo gợi ý cải thiện
-        logging.info(f"💡 Tạo gợi ý cải thiện cho CV {cv_id}...")
+        logging.info(f" Tạo gợi ý cải thiện cho CV {cv_id}...")
         improvements = await generate_cv_improvements(cv_info, insights)
         improvement_suggestions = [
             ImprovementSuggestion(**imp) for imp in improvements
         ]
-        logging.info(f"✅ Tạo {len(improvement_suggestions)} gợi ý cải thiện")
+        logging.info(f" Tạo {len(improvement_suggestions)} gợi ý cải thiện")
         return CVImproveResponse(
             cv_id=cv_id,
             improvements=improvement_suggestions
@@ -241,8 +241,8 @@ async def get_all_cvs_simple():
                     "cv_info": cv_info,  # Already parsed object
                     "upload_timestamp": row["upload_timestamp"]
                 })
-            logging.info(f"✅ Lấy {len(cvs)} CVs cho frontend")
+            logging.info(f" Lấy {len(cvs)} CVs cho frontend")
             return cvs
     except Exception as e:
-        logging.error(f"❌ Lỗi lấy CVs: {str(e)}")
+        logging.error(f" Lỗi lấy CVs: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Lỗi lấy CVs: {str(e)}")

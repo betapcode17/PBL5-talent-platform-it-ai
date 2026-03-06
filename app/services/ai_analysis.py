@@ -76,11 +76,11 @@ async def analyze_cv_insights(cv_info: Dict) -> Dict[str, Any]:
         if 'market_fit_score' in result:
             result['market_fit_score'] = max(0.0, min(1.0, float(result['market_fit_score'])))
 
-        logging.info(f"✅ Phân tích CV thành công: quality_score={result.get('quality_score')}, completeness={result.get('completeness_score')}")
+        logging.info(f" Phân tích CV thành công: quality_score={result.get('quality_score')}, completeness={result.get('completeness_score')}")
         return result
         
     except json.JSONDecodeError as e:
-        logging.error(f"❌ Lỗi parse JSON từ Gemini: {e}")
+        logging.error(f" Lỗi parse JSON từ Gemini: {e}")
         logging.error(f"Response content: {content}")
         # Return default values
         return {
@@ -98,7 +98,7 @@ async def analyze_cv_insights(cv_info: Dict) -> Dict[str, Any]:
             "weaknesses": ["Cần phân tích thêm"]
         }
     except Exception as e:
-        logging.error(f"❌ Lỗi phân tích CV: {e}")
+        logging.error(f" Lỗi phân tích CV: {e}")
         raise
 
 
@@ -155,11 +155,11 @@ async def generate_cv_improvements(cv_info: Dict, insights: Dict) -> List[Dict[s
             if isinstance(imp.get('suggested_add'), str):
                 imp['suggested_add'] = [imp['suggested_add']] if imp['suggested_add'] else None
 
-        logging.info(f"✅ Tạo {len(improvements)} gợi ý cải thiện")
+        logging.info(f" Tạo {len(improvements)} gợi ý cải thiện")
         return improvements
         
     except json.JSONDecodeError as e:
-        logging.error(f"❌ Lỗi parse JSON: {e}")
+        logging.error(f" Lỗi parse JSON: {e}")
         logging.error(f"Response: {content}")
         return [
             {
@@ -173,7 +173,7 @@ async def generate_cv_improvements(cv_info: Dict, insights: Dict) -> List[Dict[s
             }
         ]
     except Exception as e:
-        logging.error(f"❌ Lỗi tạo gợi ý: {e}")
+        logging.error(f" Lỗi tạo gợi ý: {e}")
         raise
 
 
@@ -217,27 +217,27 @@ def generate_question_suggestions(context: str, cv_info: Optional[Dict] = None, 
             {
                 "question": "CV của tôi có điểm mạnh gì?",
                 "category": "cv_analysis",
-                "icon": "💪"
+                "icon": ""
             },
             {
                 "question": "Tôi nên cải thiện kỹ năng gì để tăng cơ hội?",
                 "category": "improvement",
-                "icon": "📈"
+                "icon": ""
             },
             {
                 "question": "Mức lương tôi có thể mong đợi là bao nhiêu?",
                 "category": "salary",
-                "icon": "💰"
+                "icon": ""
             },
             {
                 "question": "Có job nào phù hợp với tôi không?",
                 "category": "job_match",
-                "icon": "🎯"
+                "icon": ""
             },
             {
                 "question": "CV của tôi thiếu gì so với thị trường?",
                 "category": "gap_analysis",
-                "icon": "🔍"
+                "icon": ""
             }
         ]
     
@@ -247,22 +247,22 @@ def generate_question_suggestions(context: str, cv_info: Optional[Dict] = None, 
             {
                 "question": f"Tôi có phù hợp với vị trí {job_title} không?",
                 "category": "job_fit",
-                "icon": "🎯"
+                "icon": ""
             },
             {
                 "question": "Tôi cần chuẩn bị gì để ứng tuyển?",
                 "category": "preparation",
-                "icon": "📝"
+                "icon": ""
             },
             {
                 "question": "Mức lương của vị trí này có hợp lý không?",
                 "category": "salary",
-                "icon": "💰"
+                "icon": ""
             },
             {
                 "question": "Công ty này có uy tín không?",
                 "category": "company",
-                "icon": "🏢"
+                "icon": ""
             }
         ]
     
@@ -271,17 +271,17 @@ def generate_question_suggestions(context: str, cv_info: Optional[Dict] = None, 
             {
                 "question": "Tôi nên học skill gì tiếp theo?",
                 "category": "learning",
-                "icon": "📚"
+                "icon": ""
             },
             {
                 "question": "Làm thế nào để tăng cơ hội được tuyển?",
                 "category": "tips",
-                "icon": "💡"
+                "icon": ""
             },
             {
                 "question": "Có khóa học nào phù hợp với tôi?",
                 "category": "courses",
-                "icon": "🎓"
+                "icon": ""
             }
         ]
     
@@ -291,7 +291,7 @@ def generate_question_suggestions(context: str, cv_info: Optional[Dict] = None, 
             {
                 "question": "Tôi có thể hỏi gì?",
                 "category": "general",
-                "icon": "❓"
+                "icon": ""
             }
         ]
     

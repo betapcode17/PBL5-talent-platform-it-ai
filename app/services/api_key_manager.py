@@ -22,18 +22,18 @@ class APIKeyManager:
             key = os.getenv(f"GOOGLE_API_KEY_{i}")
             if key:
                 self.api_keys.append(key)
-                logging.info(f"✅ Loaded API key {i}: {key[:20]}...")
+                logging.info(f" Loaded API key {i}: {key[:20]}...")
         
         if not self.api_keys:
             # Fallback to single key
             fallback_key = os.getenv("GOOGLE_API_KEY")
             if fallback_key:
                 self.api_keys.append(fallback_key)
-                logging.warning("⚠️ Using single API key (no rotation)")
+                logging.warning(" Using single API key (no rotation)")
             else:
-                raise ValueError("❌ No Google API keys found in .env file!")
+                raise ValueError(" No Google API keys found in .env file!")
         
-        logging.info(f"🔑 API Key Manager initialized with {len(self.api_keys)} keys")
+        logging.info(f" API Key Manager initialized with {len(self.api_keys)} keys")
         
         # Randomize starting index to distribute load
         self.current_index = random.randint(0, len(self.api_keys) - 1)
@@ -48,7 +48,7 @@ class APIKeyManager:
         key = self.api_keys[self.current_index]
         self.current_index = (self.current_index + 1) % len(self.api_keys)
         
-        logging.debug(f"🔄 Using API key {self.current_index + 1}/{len(self.api_keys)}")
+        logging.debug(f" Using API key {self.current_index + 1}/{len(self.api_keys)}")
         return key
     
     def get_random_key(self) -> str:
@@ -59,7 +59,7 @@ class APIKeyManager:
             str: Random API key
         """
         key = random.choice(self.api_keys)
-        logging.debug(f"🎲 Using random API key")
+        logging.debug(f" Using random API key")
         return key
     
     def get_all_keys(self) -> List[str]:

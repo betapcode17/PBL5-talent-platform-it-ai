@@ -57,7 +57,7 @@ async def send_message(msg: ChatMessage) -> ChatResponse:
     ```
     """
     try:
-        logger.info(f"💬 Incoming message: {msg.message[:50]}...")
+        logger.info(f" Incoming message: {msg.message[:50]}...")
         
         # Validate input
         if not msg.message or len(msg.message.strip()) == 0:
@@ -76,19 +76,19 @@ async def send_message(msg: ChatMessage) -> ChatResponse:
         chatbot = get_chatbot()
         
         # Process message
-        response = chatbot.chat(
+        response = chatbot.chat( # type: ignore
             user_message=msg.message,
             session_id=msg.session_id,
-            context_type=msg.context_type or "jobs"
+            context_type=msg.context_type or "auto"
         )
         
-        logger.info(f"✅ Message processed (session={response.session_id})")
+        logger.info(f" Message processed (session={response.session_id})")
         return response
         
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"❌ Error processing message: {e}")
+        logger.error(f" Error processing message: {e}")
         raise HTTPException(
             status_code=500,
             detail=f"Lỗi xử lý tin nhắn: {str(e)}"
@@ -125,7 +125,7 @@ async def get_chat_history(
     ```
     """
     try:
-        logger.info(f"📜 Getting history for session: {session_id}")
+        logger.info(f" Getting history for session: {session_id}")
         
         # Get chatbot
         chatbot = get_chatbot()
@@ -149,7 +149,7 @@ async def get_chat_history(
         )
         
     except Exception as e:
-        logger.error(f"❌ Error retrieving history: {e}")
+        logger.error(f" Error retrieving history: {e}")
         raise HTTPException(
             status_code=500,
             detail=f"Lỗi truy xuất lịch sử: {str(e)}"
@@ -169,7 +169,7 @@ async def clear_chat_history(req: ChatClearRequest) -> ChatClearResponse:
     ```
     """
     try:
-        logger.info(f"🗑️ Clearing history for session: {req.session_id}")
+        logger.info(f" Clearing history for session: {req.session_id}")
         
         chatbot = get_chatbot()
         success = chatbot.clear_history(req.session_id)
@@ -189,7 +189,7 @@ async def clear_chat_history(req: ChatClearRequest) -> ChatClearResponse:
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"❌ Error clearing history: {e}")
+        logger.error(f" Error clearing history: {e}")
         raise HTTPException(
             status_code=500,
             detail=f"Lỗi xóa lịch sử: {str(e)}"
@@ -219,7 +219,7 @@ async def create_new_session():
         }
         
     except Exception as e:
-        logger.error(f"❌ Error creating session: {e}")
+        logger.error(f" Error creating session: {e}")
         raise HTTPException(
             status_code=500,
             detail=f"Lỗi tạo phiên: {str(e)}"
@@ -260,7 +260,7 @@ async def health_check() -> HealthCheckResponse:
         )
         
     except Exception as e:
-        logger.error(f"❌ Health check failed: {e}")
+        logger.error(f" Health check failed: {e}")
         return HealthCheckResponse(
             status="error",
             services={

@@ -108,4 +108,4 @@ def setup_error_handlers(app):
             }
         )
     
-    logger.info("✅ Error handlers setup complete")
+    logger.info(" Error handlers setup complete")

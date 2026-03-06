@@ -117,7 +117,7 @@ class DeleteFileRequest(BaseModel):
 
 class MatchInput(BaseModel):
     model_config = ConfigDict(
-        schema_extra={
+        json_schema_extra={
             "example": {
                 "session_id": "test-session-123",
                 "model": "gemini-2.5-flash",

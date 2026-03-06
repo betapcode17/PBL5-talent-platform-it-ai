@@ -97,39 +97,39 @@ async def match_cv_endpoint(input: MatchInput, request: Request):
         filtered_job_ids = get_filtered_jobs(cleaned_filters)
         # Ensure filtered_job_ids is always a list of integers
         if not isinstance(filtered_job_ids, list):
-            logging.warning(f"⚠️ filtered_job_ids không phải list: {type(filtered_job_ids)} = {filtered_job_ids}")
+            logging.warning(f" filtered_job_ids không phải list: {type(filtered_job_ids)} = {filtered_job_ids}")
             filtered_job_ids = []
         # Validate all items are integers
         filtered_job_ids = [int(jid) for jid in filtered_job_ids if isinstance(jid, (int, str)) and str(jid).isdigit()]
-        logging.info(f"✅ Filtered job IDs: {len(filtered_job_ids)} jobs")
+        logging.info(f" Filtered job IDs: {len(filtered_job_ids)} jobs")
         
-        # 🔍 DEBUG: Log CV input
-        logging.info(f"🔍 CV Skills: {len(cv_input.get('skills', []))} skills")
-        logging.info(f"🔍 CV Experience length: {len(cv_input.get('experience', ''))} chars")
+        #  DEBUG: Log CV input
+        logging.info(f" CV Skills: {len(cv_input.get('skills', []))} skills")
+        logging.info(f" CV Experience length: {len(cv_input.get('experience', ''))} chars")
         
         result = await match_cv(cv_input, filtered_job_ids, session_id)
         
-        # 🔍 DEBUG: Log result
-        logging.info(f"🔍 RAG returned {len(result.get('matched_jobs', []))} matched jobs")
+        #  DEBUG: Log result
+        logging.info(f" RAG returned {len(result.get('matched_jobs', []))} matched jobs")
         if not result.get("matched_jobs"):
-            logging.error(f"❌ Không có matched_jobs từ RAG. Result keys: {result.keys()}")
+            logging.error(f" Không có matched_jobs từ RAG. Result keys: {result.keys()}")
 
         safe_jobs = [
             j for j in result.get("matched_jobs", [])
             if isinstance(j, dict) and "job_id" in j
         ]
         
-        logging.info(f"🔍 After filtering: {len(safe_jobs)} safe jobs")
+        logging.info(f" After filtering: {len(safe_jobs)} safe jobs")
 
         # Filter out None and invalid job IDs
         job_ids = [_to_int_job_id(j["job_id"]) for j in safe_jobs]
         job_ids = [jid for jid in job_ids if jid is not None and isinstance(jid, int)]
         
         if not job_ids:
-            logging.warning("⚠️ Không có job_id hợp lệ sau khi lọc")
+            logging.warning(" Không có job_id hợp lệ sau khi lọc")
             job_details = []
         else:
-            logging.info(f"✅ Lấy chi tiết cho {len(job_ids)} jobs")
+            logging.info(f" Lấy chi tiết cho {len(job_ids)} jobs")
             job_details = get_jobs_details_by_ids(job_ids)
         job_map = {int(j["id"]): j for j in job_details}
 
@@ -147,7 +147,7 @@ async def match_cv_endpoint(input: MatchInput, request: Request):
                 ms /= 100
             ms = max(0.0, min(1.0, ms))
 
-            # 🔥 FIX EXPLANATION
+            #  FIX EXPLANATION
             raw_expl = job.get("explanation")
             normalized_expl = normalize_explanation(raw_expl)
 
@@ -192,7 +192,7 @@ async def match_cv_endpoint(input: MatchInput, request: Request):
         )
 
     except Exception as e:
-        logging.exception("❌ match_cv_endpoint failed")
+        logging.exception(" match_cv_endpoint failed")
         return MatchResponse(
             name="",
             email="",
@@ -239,7 +239,7 @@ async def apply_job_endpoint(input: ApplyJobInput):
             raise HTTPException(status_code=400, detail=f"Đã ứng tuyển job {job_id} rồi")
         # Lưu application
         app_id = insert_application(cv_id, job_id, cover_letter, status)
-        logging.info(f"✅ CV {cv_id} đã ứng tuyển job {job_id}")
+        logging.info(f" CV {cv_id} đã ứng tuyển job {job_id}")
         return ApplicationResponse(
             application_id=app_id,
             cv_id=cv_id,
@@ -251,7 +251,7 @@ async def apply_job_endpoint(input: ApplyJobInput):
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"❌ Lỗi ứng tuyển: {str(e)}")
+        logging.error(f" Lỗi ứng tuyển: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Lỗi ứng tuyển: {str(e)}")
 
 @router.get("/applications/{cv_id}", response_model=ApplicationsResponse)
@@ -286,7 +286,7 @@ async def get_applications_endpoint(
             )
             for app in applications
         ]
-        logging.info(f"✅ Lấy {len(app_items)} applications cho CV {cv_id}")
+        logging.info(f" Lấy {len(app_items)} applications cho CV {cv_id}")
         return ApplicationsResponse(
             cv_id=cv_id,
             total=len(app_items),
@@ -295,5 +295,5 @@ async def get_applications_endpoint(
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"❌ Lỗi lấy applications: {str(e)}")
+        logging.error(f" Lỗi lấy applications: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Lỗi lấy applications: {str(e)}")

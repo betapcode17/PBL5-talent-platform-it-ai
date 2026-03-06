@@ -1,4 +1,4 @@
-# 🧠 SERVICES - Business Logic
+# SERVICES - Business Logic
 
 **Vị trị:** `e:\HOCKI6\PBL5\AI\app\services\`
 

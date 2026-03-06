@@ -4,7 +4,7 @@ Main FastAPI application entry point for AI CV-Job Matcher.
 Handles startup (preload jobs), middleware, and router inclusion.
 """
 
-print("✅ main.py loaded")
+print(" main.py loaded")
 import os
 import logging
 from pathlib import Path
@@ -71,36 +71,42 @@ app.include_router(candidates.router, prefix="/candidates", tags=["Candidates"])
 static_path = PROJECT_ROOT / "static"
 if static_path.exists():
     app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
-    logging.info(f"✅ Static files mounted from {static_path}")
+    logging.info(f" Static files mounted from {static_path}")
 else:
-    logging.warning(f"⚠️ Static directory not found: {static_path}")
+    logging.warning(f" Static directory not found: {static_path}")
 
 # Setup error handlers
 setup_error_handlers(app)
-logging.info("✅ Error handlers setup complete")
+logging.info(" Error handlers setup complete")
 
 @app.on_event("startup")
 async def startup_event():
-    print("🔄 STARTUP EVENT TRIGGERED")
-    try:
-        # Try PostgreSQL first
-        logging.info("Attempting to preload jobs from PostgreSQL...")
-        success = preload_jobs_from_pg(batch_size=500)
-        if success:
-            logging.info("✅ Preloading from PostgreSQL completed successfully")
-        else:
-            # Fallback to CSV
-            logging.warning("⚠️ PostgreSQL preload failed, falling back to CSV...")
-            logging.info(f"Preloading jobs from {DATA_PATH} into Chroma...")
-            success = preload_jobs_to_chroma(DATA_PATH, batch_size=500) # type: ignore
+    import asyncio
+    print(" STARTUP EVENT TRIGGERED")
+
+    async def _preload_in_background():
+        """Run preload in background so server starts immediately."""
+        try:
+            logging.info("Background: Attempting to preload jobs from PostgreSQL...")
+            loop = asyncio.get_event_loop()
+            success = await loop.run_in_executor(None, preload_jobs_from_pg)
             if success:
-                logging.info("✅ Preloading from CSV completed successfully")
+                logging.info(" Background preload from PostgreSQL completed successfully")
             else:
-                logging.warning("⚠️ CSV preloading also failed (check logs)")
-    except Exception as e:
-        logging.exception(f"❌ Error during startup preload: {e}")
-        # Don't raise to allow app to start even if preload fails
-        logging.warning("⚠️ App starting without job preload")
+                logging.warning(" Background PostgreSQL preload failed, trying CSV...")
+                success = await loop.run_in_executor(
+                    None, lambda: preload_jobs_to_chroma(DATA_PATH, batch_size=500) # type: ignore
+                )
+                if success:
+                    logging.info(" Background CSV preload completed")
+                else:
+                    logging.warning(" Background preload failed entirely")
+        except Exception as e:
+            logging.exception(f" Background preload error: {e}")
+
+    # Launch preload in background - server starts immediately
+    asyncio.create_task(_preload_in_background())
+    logging.info(" Server started - job preload running in background")
 
 # =========================
 # ROOT ENDPOINT

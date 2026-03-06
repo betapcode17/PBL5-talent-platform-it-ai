@@ -21,7 +21,7 @@ class ChatMessage(BaseModel):
     """User chat message input"""
     message: str = Field(..., min_length=1, max_length=2000, description="Nội dung tin nhắn")
     session_id: Optional[str] = Field(None, description="ID phiên chat")
-    context_type: Optional[str] = Field("jobs", description="Loại context: jobs, cv, matching")
+    context_type: Optional[str] = Field("auto", description="Loại context: auto, jobs, cv, matching, career")
 
 
 class ChatResponse(BaseModel):
@@ -32,6 +32,10 @@ class ChatResponse(BaseModel):
     sources: List[Dict[str, Any]] = Field(
         default_factory=list, 
         description="Tài liệu được truy xuất (job IDs, titles, etc)"
+    )
+    detected_intent: Optional[str] = Field(
+        None,
+        description="Intent được phát hiện: jobs, cv, matching, career, default"
     )
     confidence_score: Optional[float] = Field(
         None, 

@@ -83,9 +83,9 @@ def verify_job_id_consistency(job_id: int) -> bool:
                 logging.error(f"Mismatch in {field} for job_id {job_id}: SQLite={sqlite_value}, Chroma={chroma_value}")
                 is_consistent = False
         if is_consistent:
-            logging.info(f"✅ job_id {job_id} is consistent between SQLite and Chroma")
+            logging.info(f" job_id {job_id} is consistent between SQLite and Chroma")
         else:
-            logging.warning(f"⚠️ job_id {job_id} is NOT consistent between SQLite and Chroma")
+            logging.warning(f" job_id {job_id} is NOT consistent between SQLite and Chroma")
         return is_consistent
     except Exception as e:
         logging.error(f"Error verifying job_id {job_id}: {e}")

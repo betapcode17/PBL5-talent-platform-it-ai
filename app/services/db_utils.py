@@ -36,9 +36,9 @@ def create_tables():
         cursor.execute("PRAGMA table_info(cv_store)")
         columns = [row[1] for row in cursor.fetchall()]
         if 'file_data' not in columns:
-            logging.info("⚙️ Migrating cv_store: Adding file_data column...")
+            logging.info(" Migrating cv_store: Adding file_data column...")
             conn.execute("ALTER TABLE cv_store ADD COLUMN file_data BLOB")
-            logging.info("✅ Migration completed: file_data column added")
+            logging.info(" Migration completed: file_data column added")
 
         conn.execute('''CREATE TABLE IF NOT EXISTS match_logs
                         (id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -165,13 +165,13 @@ def get_cached_matches(cv_id: int) -> Optional[List[Dict]]:
                 from datetime import datetime, timedelta
                 created_at = datetime.fromisoformat(row['created_at'])
                 if datetime.now() - created_at < timedelta(hours=1):
-                    logging.info(f"✅ Lấy {len(jobs)} cached jobs cho CV {cv_id}")
+                    logging.info(f" Lấy {len(jobs)} cached jobs cho CV {cv_id}")
                     return jobs
                 else:
-                    logging.info(f"⚠️ Cache cho CV {cv_id} đã cũ hơn 1 giờ, cần refresh")
+                    logging.info(f" Cache cho CV {cv_id} đã cũ hơn 1 giờ, cần refresh")
                     return None
             except Exception as e:
-                logging.error(f"❌ Lỗi parse cached jobs: {e}")
+                logging.error(f" Lỗi parse cached jobs: {e}")
                 return None
         return None
 

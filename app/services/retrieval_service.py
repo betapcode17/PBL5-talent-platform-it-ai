@@ -36,23 +36,16 @@ class RetrievalService:
         filters: Optional[Dict[str, Any]] = None
     ) -> List[RetrievedDocument]:
         """
-        Retrieve documents matching the query
-        
-        Args:
-            query: Search query
-            k: Override default k
-            filters: Metadata filters
-            
-        Returns:
-            List of retrieved documents with similarity scores
+        Retrieve documents matching the query.
+        Includes retry logic for 429 rate limit errors.
         """
-        try:
-            k = k or self.k
-            logger.info(f"🔍 Retrieving {k} docs for query: {query[:50]}...")
-            
-            # Search with similarity
+        import time
+        k = k or self.k
+        logger.info(f" Retrieving {k} docs for query: {query[:50]}...")
+
+        max_retries = 3
+        for attempt in range(max_retries):
             try:
-                # Try with scores first
                 results = self.vectorstore.similarity_search_with_relevance_scores(
                     query, 
                     k=k
@@ -69,30 +62,20 @@ class RetrievalService:
                         )
                     )
                 
-                logger.info(f"✅ Retrieved {len(retrieved_docs)} documents")
+                logger.info(f" Retrieved {len(retrieved_docs)} documents")
                 return retrieved_docs
                 
             except Exception as e:
-                # Fallback to basic similarity search
-                logger.warning(f"⚠️ Fallback to basic similarity search: {e}")
-                docs = self.vectorstore.similarity_search(query, k=k)
-                
-                retrieved_docs = []
-                for doc in docs:
-                    retrieved_docs.append(
-                        RetrievedDocument(
-                            id=doc.metadata.get("job_id", "unknown"),
-                            content=doc.page_content,
-                            metadata=doc.metadata or {},
-                            distance=None
-                        )
-                    )
-                
-                return retrieved_docs
-                
-        except Exception as e:
-            logger.error(f"❌ Retrieval failed: {e}")
-            return []
+                err_str = str(e)
+                if ("429" in err_str or "RESOURCE_EXHAUSTED" in err_str) and attempt < max_retries - 1:
+                    wait = 20 * (attempt + 1)
+                    logger.warning(f" Rate limited (attempt {attempt+1}), retrying in {wait}s...")
+                    time.sleep(wait)
+                    continue
+                logger.error(f" Retrieval failed: {e}")
+                return []
+        
+        return []
     
     def retrieve_by_metadata(
         self, 
@@ -112,7 +95,7 @@ class RetrievalService:
             List of matching documents
         """
         try:
-            logger.info(f"🔍 Searching {field}={value}")
+            logger.info(f" Searching {field}={value}")
             
             # This is a simple implementation
             # For more complex filtering, you'd need to use Chroma's native filtering
@@ -135,7 +118,7 @@ class RetrievalService:
             return retrieved_docs
             
         except Exception as e:
-            logger.error(f"❌ Metadata search failed: {e}")
+            logger.error(f" Metadata search failed: {e}")
             return []
     
     def get_context_string(
@@ -192,7 +175,7 @@ Chi tiết:
             List of similar documents (excluding the reference job)
         """
         try:
-            logger.info(f"🔍 Finding similar jobs to job_id={job_id}")
+            logger.info(f" Finding similar jobs to job_id={job_id}")
             
             # Get the reference job details
             all_docs = self.vectorstore.get(limit=1000)
@@ -204,7 +187,7 @@ Chi tiết:
                     break
             
             if not reference_job:
-                logger.warning(f"⚠️ Job {job_id} not found")
+                logger.warning(f" Job {job_id} not found")
                 return []
             
             # Use job title as query
@@ -220,7 +203,7 @@ Chi tiết:
             return similar_docs
             
         except Exception as e:
-            logger.error(f"❌ Similar jobs search failed: {e}")
+            logger.error(f" Similar jobs search failed: {e}")
             return []
     
     def change_collection(self, collection_name: str):

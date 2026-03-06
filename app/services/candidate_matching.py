@@ -74,7 +74,7 @@ async def match_candidates_to_job(input: CandidateSearchInput) -> CandidateSearc
         filters = input.filters
         limit = input.limit
         
-        retriever, qa_chain = get_candidate_rag_components(input.model)
+        retriever, qa_chain = get_candidate_rag_components(input.model) # type: ignore #
         cv_vectorstore = get_vectorstore(collection_name="cv_collection")
         
         # Apply filters (e.g., exp_years >2)
@@ -86,7 +86,7 @@ async def match_candidates_to_job(input: CandidateSearchInput) -> CandidateSearc
         
         # Retrieve CV docs
         cv_docs = cv_vectorstore.similarity_search(job_query, k=20, filter=where_filter)
-        cv_docs = [_prefix_doc_with_id(d, prefix="CV_ID") for d in cv_docs]  # Prefix CV_ID for prompt
+        cv_docs = [_prefix_doc_with_id(d, prefix="CV_ID") for d in cv_docs]  # type: ignore # Prefix CV_ID for prompt
         
         logging.info(f"Retrieved {len(cv_docs)} CVs for job query")
         

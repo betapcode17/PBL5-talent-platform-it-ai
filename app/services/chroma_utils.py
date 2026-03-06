@@ -53,7 +53,7 @@ def _initialize_vectorstore(collection_name: str) -> Chroma:
         chroma_path.mkdir(parents=True, exist_ok=True)
         
         embedding_function = GoogleGenerativeAIEmbeddings(
-            model="models/text-embedding-004",
+            model="models/gemini-embedding-001",
             google_api_key=google_api_key, # type: ignore
             task_type="retrieval_document"  # Tối ưu cho retrieval
         )
@@ -63,10 +63,10 @@ def _initialize_vectorstore(collection_name: str) -> Chroma:
             collection_name=collection_name,
             embedding_function=embedding_function
         )
-        logging.info(f"✅ Initialized Chroma vectorstore for '{collection_name}' with Google Gemini Embedding API")
+        logging.info(f" Initialized Chroma vectorstore for '{collection_name}' with Google Gemini Embedding API")
         return vectorstore
     except Exception as e:
-        logging.error(f"❌ Error initializing Chroma for '{collection_name}': {e}")
+        logging.error(f" Error initializing Chroma for '{collection_name}': {e}")
         raise
 
 def preload_jobs(csv_path: str, batch_size: int = 1000) -> bool:
@@ -78,16 +78,16 @@ def preload_jobs(csv_path: str, batch_size: int = 1000) -> bool:
         csv_path = Path(csv_path) # type: ignore
 
         if not csv_path.exists(): # type: ignore
-            logging.error(f"❌ File does not exist: {csv_path}")
+            logging.error(f" File does not exist: {csv_path}")
             return False
 
         if csv_path.suffix.lower() != ".csv": # type: ignore
             raise ValueError(f"File must be .csv, got: {csv_path}")
 
-        logging.info(f"📥 Preloading jobs from {csv_path}")
+        logging.info(f" Preloading jobs from {csv_path}")
 
         create_tables()
-        logging.info("✅ Ensured database tables are created")
+        logging.info(" Ensured database tables are created")
 
         vectorstore = get_vectorstore("jobs")  # Use jobs collection
 
@@ -96,11 +96,11 @@ def preload_jobs(csv_path: str, batch_size: int = 1000) -> bool:
 
             cursor.execute("SELECT COUNT(*) FROM job_store")
             if cursor.fetchone()[0] > 0:
-                logging.info("⏭️ Skipping preload: job_store already populated")
+                logging.info(" Skipping preload: job_store already populated")
                 return True
 
             df = pd.read_csv(csv_path, encoding="utf-8-sig")
-            logging.info(f"📄 Loaded {len(df)} jobs from CSV")
+            logging.info(f" Loaded {len(df)} jobs from CSV")
 
             documents = []
             inserted_count = 0
@@ -177,26 +177,26 @@ def preload_jobs(csv_path: str, batch_size: int = 1000) -> bool:
 
                         if len(documents) >= batch_size:
                             vectorstore.add_documents(documents)
-                            logging.info(f"➕ Added batch of {len(documents)} to Chroma (jobs collection)")
+                            logging.info(f" Added batch of {len(documents)} to Chroma (jobs collection)")
                             documents.clear()
 
                 except Exception as row_err:
                     # Safe logging for Vietnamese chars
                     safe_err = str(row_err).encode('utf-8', errors='replace').decode('utf-8')
-                    logging.warning(f"⚠️ Skipping row {index}: {safe_err}")
+                    logging.warning(f" Skipping row {index}: {safe_err}")
 
             if documents:
                 vectorstore.add_documents(documents)
-                logging.info(f"➕ Added final batch of {len(documents)} to Chroma (jobs collection)")
+                logging.info(f" Added final batch of {len(documents)} to Chroma (jobs collection)")
 
             conn.commit()
-            logging.info(f"✅ Preloaded {inserted_count} jobs successfully")
+            logging.info(f" Preloaded {inserted_count} jobs successfully")
 
         return True
 
     except Exception as e:
         safe_e = str(e).encode('utf-8', errors='replace').decode('utf-8')
-        logging.error(f"❌ Error preloading jobs from CSV: {safe_e}", exc_info=True)
+        logging.error(f" Error preloading jobs from CSV: {safe_e}", exc_info=True)
         return False
 
 async def index_cv_extracts(skills: list, aspirations: str, experience: str, education: str, cv_id: int) -> bool:
@@ -216,11 +216,11 @@ async def index_cv_extracts(skills: list, aspirations: str, experience: str, edu
         doc = Document(page_content=content, metadata={"cv_id": cv_id, "type": "cv"})
         vectorstore = get_vectorstore("cvs")  # Use CV collection
         vectorstore.add_documents([doc])
-        logging.info(f"✅ Indexed CV {cv_id} into Chroma (cvs collection)")
+        logging.info(f" Indexed CV {cv_id} into Chroma (cvs collection)")
         return True
     except Exception as e:
         safe_e = str(e).encode('utf-8', errors='replace').decode('utf-8')
-        logging.error(f"❌ Error indexing CV {cv_id}: {safe_e}")
+        logging.error(f" Error indexing CV {cv_id}: {safe_e}")
         return False
 
 def delete_cv_from_chroma(cv_id: int) -> bool:
@@ -233,14 +233,14 @@ def delete_cv_from_chroma(cv_id: int) -> bool:
         vectorstore = get_vectorstore("cvs")
         docs = vectorstore.get(where={"cv_id": cv_id})
         if not docs['ids']:
-            logging.info(f"ℹ️ No documents found for CV {cv_id}")
+            logging.info(f"ℹ No documents found for CV {cv_id}")
             return False
         vectorstore._collection.delete(where={"cv_id": cv_id})
-        logging.info(f"✅ Deleted CV {cv_id} from Chroma (cvs collection)")
+        logging.info(f" Deleted CV {cv_id} from Chroma (cvs collection)")
         return True
     except Exception as e:
         safe_e = str(e).encode('utf-8', errors='replace').decode('utf-8')
-        logging.error(f"❌ Error deleting CV {cv_id} from Chroma: {safe_e}")
+        logging.error(f" Error deleting CV {cv_id} from Chroma: {safe_e}")
         return False
 
 
@@ -248,25 +248,35 @@ def delete_cv_from_chroma(cv_id: int) -> bool:
 # PostgreSQL-based preload
 # ---------------------------------------------------------------------------
 
-def preload_jobs_from_pg(batch_size: int = 500) -> bool:
+def preload_jobs_from_pg(batch_size: int = 20, force: bool = False) -> bool:
     """
     Preload jobs from PostgreSQL (it_job_db) into ChromaDB.
     Replaces the CSV-based preload for the RAG chatbot.
+    
+    Args:
+        batch_size: Number of documents per embedding API call
+        force: If True, delete existing collection and re-index all jobs
     """
+    import time
     try:
         vectorstore = get_vectorstore("jobs")
 
         # Check if already populated
         existing = vectorstore._collection.count()
-        if existing > 0:
-            logging.info(f"⏭️ Skipping PG preload: jobs collection already has {existing} documents")
+        if existing > 0 and not force:
+            logging.info(f" Skipping PG preload: jobs collection already has {existing} documents")
             return True
 
-        logging.info("📥 Preloading jobs from PostgreSQL into ChromaDB...")
-        jobs = get_all_jobs(limit=5000)
+        if force and existing > 0:
+            logging.info(f" Force reindex: deleting {existing} existing documents...")
+            vectorstore._collection.delete(where={})
+            logging.info(" Cleared existing ChromaDB jobs collection")
+
+        logging.info(" Preloading jobs from PostgreSQL into ChromaDB...")
+        jobs = get_all_jobs(limit=10000)
 
         if not jobs:
-            logging.warning("⚠️ No jobs found in PostgreSQL")
+            logging.warning(" No jobs found in PostgreSQL")
             return False
 
         documents: List[Document] = []
@@ -290,20 +300,39 @@ def preload_jobs_from_pg(batch_size: int = 500) -> bool:
                 "work_type": str(job.get("work_type", "")),
                 "category": str(job.get("category_name", "")),
                 "skills": str(job.get("skills_text", "")),
+                "url": str(job.get("job_url", "")),
                 "num_positions": int(job.get("number_of_hires", 1) or 1),
             }
             documents.append(Document(page_content=page_content, metadata=metadata))
 
-        # Add in batches
+        # Add in batches with delay to avoid rate limiting
+        total_batches = (len(documents) + batch_size - 1) // batch_size
         for i in range(0, len(documents), batch_size):
             batch = documents[i: i + batch_size]
-            vectorstore.add_documents(batch)
-            logging.info(f"➕ Added batch {i // batch_size + 1} ({len(batch)} docs) to ChromaDB")
+            batch_num = i // batch_size + 1
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    vectorstore.add_documents(batch)
+                    logging.info(f" Added batch {batch_num}/{total_batches} ({len(batch)} docs) to ChromaDB")
+                    break
+                except Exception as batch_err:
+                    if ("429" in str(batch_err) or "RESOURCE_EXHAUSTED" in str(batch_err)):
+                        wait_time = 60 * (attempt + 1)
+                        logging.warning(f" Rate limited at batch {batch_num} (attempt {attempt+1}), waiting {wait_time}s...")
+                        time.sleep(wait_time)
+                        if attempt == max_retries - 1:
+                            logging.error(f" Failed batch {batch_num} after {max_retries} retries, skipping...")
+                    else:
+                        raise
+            # Delay between batches to respect API rate limits
+            if batch_num < total_batches:
+                time.sleep(5)
 
-        logging.info(f"✅ Preloaded {len(documents)} jobs from PostgreSQL into ChromaDB")
+        logging.info(f" Preloaded {len(documents)} jobs from PostgreSQL into ChromaDB")
         return True
 
     except Exception as e:
         safe_e = str(e).encode('utf-8', errors='replace').decode('utf-8')
-        logging.error(f"❌ Error preloading jobs from PostgreSQL: {safe_e}", exc_info=True)
+        logging.error(f" Error preloading jobs from PostgreSQL: {safe_e}", exc_info=True)
         return False

@@ -1,9 +1,10 @@
 # app/routers/jobs.py
 from fastapi import APIRouter, HTTPException, Query
-from typing import Dict, Any
+from typing import Dict, Any, List, Set
 from models.responses import JobSearchInput, JobSearchResponse, JobSearchResult
 from services.db_utils import get_db_connection
 from services.ai_analysis import get_llm
+from services.chroma_utils import get_vectorstore
 import json
 import logging
 from datetime import datetime, timedelta
@@ -34,7 +35,7 @@ async def get_all_jobs_simple(limit: int = 100, offset: int = 0):
             # Get jobs with pagination
             cursor.execute(f"SELECT * FROM job_store LIMIT ? OFFSET ?", (limit, offset))
             jobs = [dict(row) for row in cursor.fetchall()]
-            logging.info(f"✅ Lấy {len(jobs)} jobs (total: {total}, limit: {limit}, offset: {offset})")
+            logging.info(f" Lấy {len(jobs)} jobs (total: {total}, limit: {limit}, offset: {offset})")
             return {
                 "jobs": jobs,
                 "total": total,
@@ -42,15 +43,14 @@ async def get_all_jobs_simple(limit: int = 100, offset: int = 0):
                 "offset": offset
             }
     except Exception as e:
-        logging.error(f"❌ Lỗi lấy jobs: {str(e)}")
+        logging.error(f" Lỗi lấy jobs: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Lỗi lấy jobs: {str(e)}")
 
 @router.post("/search", response_model=JobSearchResponse)
 async def search_jobs_endpoint(input: JobSearchInput):
     """
-    Tìm kiếm jobs thông minh với AI ranking
-    Khác với /jobs (chỉ list tất cả),
-    endpoint này cho phép search với query, filters và AI ranking theo CV.
+    Hybrid search: ket hop semantic search (ChromaDB) va keyword search (SQL LIKE).
+    Ket qua duoc merge, deduplicate va rank theo combined score.
     """
     try:
         query = input.query
@@ -58,8 +58,9 @@ async def search_jobs_endpoint(input: JobSearchInput):
         cv_id = input.cv_id
         limit = input.limit
         offset = input.offset
-        logging.info(f"🔍 Tìm kiếm jobs: query='{query}', filters={filters}, cv_id={cv_id}")
-        # Lấy CV info nếu có cv_id (để AI ranking)
+        logging.info(f"Hybrid search: query='{query}', filters={filters}, cv_id={cv_id}")
+
+        # Lay CV info neu co cv_id (de AI ranking)
         cv_info = None
         if cv_id:
             with get_db_connection() as conn:
@@ -68,62 +69,107 @@ async def search_jobs_endpoint(input: JobSearchInput):
                 row = cursor.fetchone()
                 if row:
                     cv_info = json.loads(row["cv_info_json"])
-        # Build SQL query
-        sql = "SELECT * FROM job_store WHERE 1=1"
-        params = []
-        # Text search
+
+        # ---- 1. Keyword search (SQL LIKE) ----
+        keyword_jobs: List[dict] = []
+        keyword_ids: Set[int] = set()
         if query:
-            sql += " AND (job_title LIKE ? OR job_description LIKE ? OR skills LIKE ?)"
+            kw_sql = "SELECT * FROM job_store WHERE 1=1"
+            kw_params: list = []
+            kw_sql += " AND (job_title LIKE ? OR job_description LIKE ? OR skills LIKE ?)"
             search_term = f"%{query}%"
-            params.extend([search_term, search_term, search_term])
-        # Filters
-        if filters.get('work_location'):
-            locations = filters['work_location']
-            placeholders = ','.join(['?' for _ in locations])
-            sql += f" AND work_location IN ({placeholders})"
-            params.extend(locations)
-        if filters.get('work_type'):
-            work_types = filters['work_type']
-            placeholders = ','.join(['?' for _ in work_types])
-            sql += f" AND work_type IN ({placeholders})"
-            params.extend(work_types)
-        if filters.get('experience'):
-            sql += " AND experience = ?"
-            params.append(filters['experience'])
-        if filters.get('salary_min'):
-            # Simple salary filter (can be improved)
-            pass
-        # Pagination
-        sql += " LIMIT ? OFFSET ?"
-        params.extend([limit, offset])
-        # Execute query
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute(sql, params)
-            jobs = [dict(row) for row in cursor.fetchall()]
-        # Count total
-        count_sql = sql.split("LIMIT")[0]
-        count_params = params[:-2]
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute(f"SELECT COUNT(*) as total FROM ({count_sql})", count_params)
-            total = cursor.fetchone()['total']
-        # AI ranking nếu có cv_id - SIMPLE MATCHING (không dùng semantic search)
+            kw_params.extend([search_term, search_term, search_term])
+            kw_sql, kw_params = _apply_filters(kw_sql, kw_params, filters)
+            kw_sql += " LIMIT ?"
+            kw_params.append(limit * 2)
+            with get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(kw_sql, kw_params)
+                keyword_jobs = [dict(row) for row in cursor.fetchall()]
+            keyword_ids = {j['id'] for j in keyword_jobs}
+
+        # ---- 2. Semantic search (ChromaDB) ----
+        semantic_jobs: List[dict] = []
+        semantic_scores: Dict[int, float] = {}
+        if query:
+            try:
+                vectorstore = get_vectorstore("jobs")
+                sem_results = vectorstore.similarity_search_with_relevance_scores(
+                    query, k=limit * 2
+                )
+                for doc, score in sem_results:
+                    job_id = doc.metadata.get("job_id")
+                    if job_id is not None:
+                        try:
+                            jid = int(job_id)
+                            semantic_scores[jid] = float(score)
+                        except (ValueError, TypeError):
+                            pass
+                # Fetch full job data for semantic-only results
+                semantic_only_ids = [jid for jid in semantic_scores if jid not in keyword_ids]
+                if semantic_only_ids:
+                    placeholders = ','.join(['?' for _ in semantic_only_ids])
+                    filter_sql = f"SELECT * FROM job_store WHERE id IN ({placeholders})"
+                    filter_params: list = list(semantic_only_ids)
+                    extra_conditions, extra_params = _build_filter_conditions(filters)
+                    if extra_conditions:
+                        filter_sql += " AND " + " AND ".join(extra_conditions)
+                        filter_params.extend(extra_params)
+                    with get_db_connection() as conn:
+                        cursor = conn.cursor()
+                        cursor.execute(filter_sql, filter_params)
+                        semantic_jobs = [dict(row) for row in cursor.fetchall()]
+            except Exception as se:
+                logging.warning(f"Semantic search failed, falling back to keyword only: {se}")
+
+        # ---- 3. Merge & deduplicate ----
+        all_jobs_map: Dict[int, dict] = {}
+        for job in keyword_jobs:
+            all_jobs_map[job['id']] = job
+        for job in semantic_jobs:
+            if job['id'] not in all_jobs_map:
+                all_jobs_map[job['id']] = job
+
+        # If no query, just list all jobs with filters
+        if not query:
+            sql = "SELECT * FROM job_store WHERE 1=1"
+            params: list = []
+            sql, params = _apply_filters(sql, params, filters)
+            sql += " LIMIT ? OFFSET ?"
+            params.extend([limit, offset])
+            with get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(sql, params)
+                all_jobs_list = [dict(row) for row in cursor.fetchall()]
+            all_jobs_map = {j['id']: j for j in all_jobs_list}
+
+        # ---- 4. Score & rank ----
         results = []
-        for job in jobs:
+        for jid, job in all_jobs_map.items():
             job_skills = [s.strip() for s in job.get('skills', '').split(';') if s.strip()]
+            if len(job_skills) <= 1 and ',' in job.get('skills', ''):
+                job_skills = [s.strip() for s in job.get('skills', '').split(',') if s.strip()]
+
+            # Combined scoring
+            keyword_hit = 1.0 if jid in keyword_ids else 0.0
+            semantic_score = semantic_scores.get(jid, 0.0)
+            hybrid_score = 0.4 * keyword_hit + 0.6 * semantic_score if query else 0.0
+
             match_score = None
             why_match = None
+
             if cv_info:
                 cv_skills = cv_info.get('skills', [])
                 matched_skills = set(cv_skills) & set(job_skills)
-                match_score = len(matched_skills) / max(len(job_skills), 1) if job_skills else 0.0
-                # Generate simple why_match
+                skill_score = len(matched_skills) / max(len(job_skills), 1) if job_skills else 0.0
+                match_score = 0.5 * skill_score + 0.5 * hybrid_score if query else skill_score
                 if matched_skills:
-                    why_match = f"Khớp {len(matched_skills)} kỹ năng: {', '.join(list(matched_skills)[:3])}"
+                    why_match = f"Khop {len(matched_skills)} ky nang: {', '.join(list(matched_skills)[:3])}"
                 else:
-                    why_match = "Có thể phù hợp với vị trí này"
-            # Get company name from various possible fields
+                    why_match = "Co the phu hop voi vi tri nay"
+            elif query:
+                match_score = hybrid_score
+
             company_name = job.get('name') or job.get('company_name') or job.get('company') or 'Unknown Company'
             results.append(JobSearchResult(
                 job_id=job['id'],
@@ -136,10 +182,16 @@ async def search_jobs_endpoint(input: JobSearchInput):
                 deadline=job.get('deadline', 'N/A'),
                 why_match=why_match
             ))
-        # Sort by match_score if available
-        if cv_info:
-            results.sort(key=lambda x: x.match_score or 0, reverse=True)
-        logging.info(f"✅ Tìm được {total} jobs, trả về {len(results)} jobs")
+
+        # Sort by match_score descending
+        results.sort(key=lambda x: x.match_score or 0, reverse=True)
+
+        # Apply pagination on merged results
+        total = len(results)
+        results = results[offset:offset + limit]
+
+        logging.info(f"Hybrid search: {total} total, returning {len(results)} jobs "
+                     f"(keyword={len(keyword_ids)}, semantic={len(semantic_scores)})")
         return JobSearchResponse(
             total=total,
             jobs=results,
@@ -147,8 +199,37 @@ async def search_jobs_endpoint(input: JobSearchInput):
             offset=offset
         )
     except Exception as e:
-        logging.error(f"❌ Lỗi tìm kiếm jobs: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Lỗi tìm kiếm: {str(e)}")
+        logging.error(f"Loi tim kiem jobs: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Loi tim kiem: {str(e)}")
+
+
+def _build_filter_conditions(filters: Dict) -> tuple:
+    """Build SQL filter conditions and params from filters dict."""
+    conditions: List[str] = []
+    params: list = []
+    if filters.get('work_location'):
+        locations = filters['work_location']
+        placeholders = ','.join(['?' for _ in locations])
+        conditions.append(f"work_location IN ({placeholders})")
+        params.extend(locations)
+    if filters.get('work_type'):
+        work_types = filters['work_type']
+        placeholders = ','.join(['?' for _ in work_types])
+        conditions.append(f"work_type IN ({placeholders})")
+        params.extend(work_types)
+    if filters.get('experience'):
+        conditions.append("experience = ?")
+        params.append(filters['experience'])
+    return conditions, params
+
+
+def _apply_filters(sql: str, params: list, filters: Dict) -> tuple:
+    """Apply filter conditions to SQL query."""
+    conditions, filter_params = _build_filter_conditions(filters)
+    for cond in conditions:
+        sql += f" AND {cond}"
+    params.extend(filter_params)
+    return sql, params
 
 @router.get("/analytics")
 async def get_jobs_analytics():
@@ -260,7 +341,7 @@ async def get_jobs_analytics():
             # 9. Total Stats
             cursor.execute("SELECT COUNT(*) as total FROM job_store")
             total_jobs = cursor.fetchone()["total"]
-            logging.info(f"✅ Phân tích {total_jobs} jobs thành công")
+            logging.info(f" Phân tích {total_jobs} jobs thành công")
             return {
                 "total_jobs": total_jobs,
                 "top_job_titles": top_job_titles,
@@ -273,7 +354,7 @@ async def get_jobs_analytics():
                 "deadline_stats": deadline_stats
             }
     except Exception as e:
-        logging.error(f"❌ Lỗi phân tích jobs: {str(e)}")
+        logging.error(f" Lỗi phân tích jobs: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Lỗi phân tích: {str(e)}")
 
 
@@ -329,7 +410,7 @@ async def generate_chart_insights(request: Dict[str, Any]):
         formatted_prompt = prompt_template.format(data_str=data_str)
         logging.info(f"Generating analysis for chart type: {chart_type}")
         response = await llm_instance.ainvoke(formatted_prompt)
-        analysis = response.content.strip()
+        analysis = response.content.strip() # type: ignore
         logging.info(f"Generated analysis: {analysis[:100]}...")
         return {"analysis": analysis}
     except Exception as e:
@@ -340,82 +421,31 @@ async def generate_chart_insights(request: Dict[str, Any]):
 @router.post("/reindex")
 async def reindex_jobs_to_chroma():
     """
-    Force re-index tất cả jobs từ SQLite vào ChromaDB.
-    Sử dụng khi ChromaDB rỗng nhưng SQLite đã có data.
+    Force re-index tat ca jobs tu PostgreSQL vao ChromaDB.
+    Xoa collection cu va tao lai tu dau.
     """
     try:
-        from services.chroma_utils import get_vectorstore
-        from langchain_core.documents import Document
-        import json
+        from services.chroma_utils import preload_jobs_from_pg
         
-        logging.info("🔄 Starting force re-index jobs to ChromaDB...")
+        logging.info(" Starting force re-index from PostgreSQL to ChromaDB...")
         
-        # Get vectorstore
-        vectorstore = get_vectorstore("jobs")
+        success = preload_jobs_from_pg(batch_size=50, force=True)
         
-        # Get all jobs from SQLite
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM job_store")
-            jobs = cursor.fetchall()
-            
-        if not jobs:
+        if success:
+            from services.chroma_utils import get_vectorstore
+            count = get_vectorstore("jobs")._collection.count()
+            return {
+                "success": True,
+                "message": f"Da index {count} jobs tu PostgreSQL vao ChromaDB",
+                "total": count
+            }
+        else:
             return {
                 "success": False,
-                "message": "❌ Không có jobs trong database để index",
+                "message": "Khong the index jobs tu PostgreSQL",
                 "total": 0
             }
         
-        logging.info(f"📦 Found {len(jobs)} jobs in SQLite")
-        
-        # Convert to documents
-        documents = []
-        for job_row in jobs:
-            job = dict(job_row)
-            
-            skills_list = [s.strip() for s in job.get("skills", "").split(",") if s.strip()]
-            
-            page_content = (
-                f"JOB_ID: {job['id']}\n"
-                f"{job.get('job_title', '')} "
-                f"{job.get('job_description', '')} "
-                f"{job.get('candidate_requirements', '')} "
-                f"{json.dumps(skills_list, ensure_ascii=False)}"
-            )
-            
-            # Add job_id to metadata
-            metadata = dict(job)
-            metadata["job_id"] = job["id"]
-            
-            documents.append(
-                Document(page_content=page_content, metadata=metadata)
-            )
-        
-        # Clear existing collection (optional)
-        try:
-            collection = vectorstore._collection
-            collection.delete(where={})  # Delete all
-            logging.info("🗑️ Cleared existing ChromaDB collection")
-        except Exception as e:
-            logging.warning(f"⚠️ Could not clear collection: {e}")
-        
-        # Add documents in batches
-        batch_size = 100
-        total_added = 0
-        for i in range(0, len(documents), batch_size):
-            batch = documents[i:i + batch_size]
-            vectorstore.add_documents(batch)
-            total_added += len(batch)
-            logging.info(f"➕ Added batch {i//batch_size + 1}: {total_added}/{len(documents)} documents")
-        
-        logging.info(f"✅ Successfully indexed {total_added} jobs to ChromaDB")
-        
-        return {
-            "success": True,
-            "message": f"✅ Đã index {total_added} jobs vào ChromaDB",
-            "total": total_added
-        }
-        
     except Exception as e:
-        logging.exception(f"❌ Error re-indexing jobs: {e}")
-        raise HTTPException(status_code=500, detail=f"Lỗi re-index jobs: {str(e)}")
+        logging.exception(f" Error re-indexing jobs: {e}")
+        raise HTTPException(status_code=500, detail=f"Loi re-index jobs: {str(e)}")

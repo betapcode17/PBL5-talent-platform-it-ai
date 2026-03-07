@@ -11,9 +11,10 @@ from typing import Optional, List, Dict, Any
 
 from services.llm_service import get_llm_service
 from services.retrieval_service import get_retrieval_service
-from services.pg_database import get_job_stats, get_job_by_id
+from services.pg_database import get_job_stats, get_job_by_id, execute_safe_sql
 from models.chat import ChatResponse, ChatHistoryItem, ChatRole, RAGContext
 from prompts.chat_system_prompt import CHAT_SYSTEM_PROMPTS
+from prompts.sql_prompt import SQL_SYSTEM_PROMPT, SQL_RESULT_PROMPT
 
 logger = logging.getLogger(__name__)
 
@@ -240,6 +241,25 @@ class ChatbotRAG:
             "cần tuyển", "can tuyen",
             "tìm công việc", "tim cong viec",
         ],
+        "sql": [
+            "bao nhiêu", "bao nhieu",
+            "có bao nhiêu", "co bao nhieu",
+            "thống kê", "thong ke",
+            "top", "xếp hạng", "xep hang",
+            "nhiều nhất", "nhieu nhat",
+            "ít nhất", "it nhat",
+            "trung bình", "trung binh",
+            "tổng cộng", "tong cong",
+            "đếm", "dem", "count",
+            "so sánh", "so sanh",
+            "phân bố", "phan bo",
+            "tỷ lệ", "ty le",
+            "cao nhất", "cao nhat",
+            "thấp nhất", "thap nhat",
+            "phần trăm", "phan tram",
+            "truy vấn", "truy van", "query",
+            "database", "dữ liệu", "du lieu",
+        ],
     }
 
     def _detect_intent(self, message: str) -> str:
@@ -252,7 +272,7 @@ class ChatbotRAG:
 
         # 1. Keyword-based (instant, free)
         # matching checked before cv (more specific: cv + phu hop = matching)
-        for intent in ("matching", "cv", "career", "jobs"):
+        for intent in ("matching", "cv", "career", "sql", "jobs"):
             if any(kw in msg for kw in self._INTENT_KEYWORDS[intent]):
                 logger.info(f" Intent detected (keyword): {intent}")
                 return intent
@@ -273,19 +293,109 @@ class ChatbotRAG:
         """Use LLM to classify ambiguous messages into intent categories."""
         prompt = (
             "Phan loai tin nhan sau vao MOT trong cac loai:\n"
-            "- jobs: tim viec, hoi ve cong viec, thi truong lao dong, cong nghe\n"
+            "- jobs: tim viec, hoi ve cong viec, goi y viec lam\n"
+            "- sql: hoi thong ke, so lieu, bao nhieu, top, xep hang, dem, phan bo\n"
             "- cv: hoi ve CV, cai thien ho so, phan tich CV\n"
             "- matching: so khop CV voi viec, do phu hop\n"
             "- career: lo trinh nghe nghiep, phat trien ky nang, dinh huong\n"
             "- default: chao hoi, cau hoi chung\n\n"
             f'Tin nhan: "{message}"\n\n'
-            "Chi tra loi MOT tu: jobs, cv, matching, career, hoac default"
+            "Chi tra loi MOT tu: jobs, sql, cv, matching, career, hoac default"
         )
         result = self.llm_service.generate_response(
             prompt,
             system_prompt="You are a classifier. Reply with exactly one word."
         )
         return result.strip().lower().split()[0]
+
+    # ----- Text-to-SQL -----
+
+    def _generate_sql(self, user_message: str) -> str:
+        """Use LLM to generate a SQL query from the user's question."""
+        prompt = f'Cau hoi: "{user_message}"'
+        result = self.llm_service.generate_response(
+            prompt,
+            system_prompt=SQL_SYSTEM_PROMPT,
+            temperature=0.0
+        )
+        # Clean: strip markdown fences if the LLM wraps in ```sql ... ```
+        sql = result.strip()
+        if sql.startswith("```"):
+            lines = sql.split("\n")
+            lines = [l for l in lines if not l.strip().startswith("```")]
+            sql = "\n".join(lines).strip()
+        return sql
+
+    def _handle_sql_intent(self, user_message: str, conv_context: str) -> tuple:
+        """
+        Full Text-to-SQL pipeline:
+        1. Generate SQL from question
+        2. Execute safely
+        3. Format result with LLM
+        Returns: (bot_response, sources_list)
+        """
+        # Step 1: Generate SQL
+        sql = self._generate_sql(user_message)
+        logger.info(f" Generated SQL: {sql[:200]}")
+
+        if sql.upper().strip() == "NONE":
+            return None, []  # Not a DB question, fall back
+
+        # Step 2: Execute
+        result = execute_safe_sql(sql)
+
+        if result["error"]:
+            logger.warning(f" SQL error: {result['error']}")
+            # Try once more with the error context
+            retry_prompt = (
+                f'Cau hoi: "{user_message}"\n'
+                f'Lan truoc tao SQL bi loi: {result["error"]}\n'
+                f'SQL cu: {sql}\n'
+                f'Hay sua lai cho dung.'
+            )
+            sql = self.llm_service.generate_response(
+                retry_prompt,
+                system_prompt=SQL_SYSTEM_PROMPT,
+                temperature=0.0
+            ).strip()
+            if sql.startswith("```"):
+                lines = sql.split("\n")
+                lines = [l for l in lines if not l.strip().startswith("```")]
+                sql = "\n".join(lines).strip()
+            result = execute_safe_sql(sql)
+
+        if result["error"]:
+            return f"Khong the thuc hien truy van: {result['error']}", []
+
+        # Step 3: Format result with LLM
+        rows_text = ""
+        if result["rows"]:
+            # Build a readable table for the LLM
+            cols = result["columns"]
+            rows_text = " | ".join(cols) + "\n"
+            rows_text += "-" * 40 + "\n"
+            for row in result["rows"][:20]:
+                rows_text += " | ".join(str(row.get(c, "")) for c in cols) + "\n"
+
+        format_prompt = (
+            f"{conv_context}\n\n"
+            f"Cau hoi cua nguoi dung: {user_message}\n\n"
+            f"SQL da thuc hien:\n{sql}\n\n"
+            f"Ket qua ({result['row_count']} dong):\n{rows_text}\n\n"
+            f"Hay trinh bay ket qua mot cach de hieu cho nguoi dung."
+        )
+        bot_response = self.llm_service.generate_response(
+            format_prompt,
+            system_prompt=SQL_RESULT_PROMPT
+        )
+
+        sources = [{
+            "type": "sql_query",
+            "sql": sql,
+            "row_count": result["row_count"]
+        }]
+
+        return bot_response, sources
 
     def _build_system_prompt(self, context_type: str = "jobs") -> str:
         """Build system prompt for chat"""
@@ -365,11 +475,44 @@ class ChatbotRAG:
                 except Exception:
                     pass
             
-            # Build system prompt
-            system_prompt = self._build_system_prompt(detected_intent)
-            
             # Build conversation context
             conv_context = self._build_conversation_context(session_id)
+
+            # --- SQL intent: Text-to-SQL pipeline ---
+            if detected_intent == "sql":
+                try:
+                    sql_response, sql_sources = self._handle_sql_intent(
+                        user_message, conv_context
+                    )
+                    if sql_response is not None:
+                        self.add_to_history(
+                            session_id,
+                            ChatRole.ASSISTANT,
+                            sql_response,
+                            sources=sql_sources if sql_sources else None
+                        )
+                        return ChatResponse(
+                            response=sql_response,
+                            session_id=session_id,
+                            sources=sql_sources,
+                            detected_intent="sql",
+                            confidence_score=None
+                        )
+                except Exception as e:
+                    logger.warning(f" SQL intent failed: {e}")
+                    fallback = "Xin loi, hien tai khong the xu ly truy van du lieu. Vui long thu lai sau."
+                    self.add_to_history(session_id, ChatRole.ASSISTANT, fallback)
+                    return ChatResponse(
+                        response=fallback,
+                        session_id=session_id,
+                        sources=[],
+                        detected_intent="sql",
+                        confidence_score=None
+                    )
+                # Fall through to default prompt if SQL returned None
+
+            # Build system prompt
+            system_prompt = self._build_system_prompt(detected_intent)
             
             # --- Build full prompt based on intent ---
             if detected_intent == "jobs" and context:

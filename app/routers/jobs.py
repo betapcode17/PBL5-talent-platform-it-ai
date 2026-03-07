@@ -27,7 +27,7 @@ async def get_all_jobs_simple(limit: int = 100, offset: int = 0):
     - offset: Offset được sử dụng
     """
     try:
-        with get_db_connection() as conn:
+        with get_db_connection() as conn: # type: ignore
             cursor = conn.cursor()
             # Get total count
             cursor.execute("SELECT COUNT(*) as total FROM job_store")

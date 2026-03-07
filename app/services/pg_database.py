@@ -229,3 +229,95 @@ def get_job_stats() -> Dict[str, Any]:
 
     logger.info(f" Job stats: {stats['total_jobs']} active jobs, {stats['total_companies']} companies")
     return stats
+
+
+# ---------------------------------------------------------------------------
+# Safe SQL execution (Text-to-SQL)
+# ---------------------------------------------------------------------------
+
+_FORBIDDEN_KEYWORDS = {
+    "INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "TRUNCATE",
+    "CREATE", "GRANT", "REVOKE", "EXEC", "EXECUTE", "COPY",
+    "LOAD", "VACUUM", "COMMENT", "SET", "RESET",
+}
+
+_MAX_ROWS = 50
+
+
+def validate_sql(sql: str) -> bool:
+    """
+    Validate that a generated SQL query is safe (SELECT only).
+    Returns True if safe, False if potentially dangerous.
+    """
+    cleaned = sql.strip().rstrip(";").upper()
+    # Must start with SELECT or WITH (CTE)
+    if not (cleaned.startswith("SELECT") or cleaned.startswith("WITH")):
+        return False
+    # Check for forbidden keywords as standalone tokens
+    tokens = set(cleaned.split())
+    if tokens & _FORBIDDEN_KEYWORDS:
+        return False
+    # Block multiple statements
+    # Split by ; and check that there's at most 1 non-empty statement
+    statements = [s.strip() for s in sql.strip().split(";") if s.strip()]
+    if len(statements) > 1:
+        return False
+    return True
+
+
+def execute_safe_sql(sql: str) -> Dict[str, Any]:
+    """
+    Execute a validated read-only SQL query and return results.
+
+    Returns:
+        {
+            "columns": ["col1", "col2", ...],
+            "rows": [{"col1": val, "col2": val}, ...],
+            "row_count": int,
+            "sql": str,
+            "error": str | None
+        }
+    """
+    if not validate_sql(sql):
+        return {
+            "columns": [],
+            "rows": [],
+            "row_count": 0,
+            "sql": sql,
+            "error": "Truy van khong hop le. Chi cho phep SELECT."
+        }
+
+    try:
+        with get_pg_connection() as conn:
+            # Use a read-only transaction for extra safety
+            conn.set_session(readonly=True, autocommit=False)
+            try:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    # Set statement timeout (5 seconds max)
+                    cur.execute("SET LOCAL statement_timeout = '5s'")
+                    cur.execute(sql)
+                    columns = [desc[0] for desc in cur.description] if cur.description else []
+                    rows = cur.fetchmany(_MAX_ROWS)
+                    row_count = cur.rowcount if cur.rowcount >= 0 else len(rows)
+
+                    results = [dict(r) for r in rows]
+
+                    logger.info(f" SQL executed OK: {row_count} rows returned")
+                    return {
+                        "columns": columns,
+                        "rows": results,
+                        "row_count": row_count,
+                        "sql": sql,
+                        "error": None
+                    }
+            finally:
+                conn.rollback()  # Always rollback (read-only anyway)
+    except Exception as e:
+        logger.error(f" SQL execution error: {e}")
+        return {
+            "columns": [],
+            "rows": [],
+            "row_count": 0,
+            "sql": sql,
+            "error": str(e)
+        }

@@ -5,7 +5,7 @@ from datetime import datetime
 import re
 
 class ModelName(str, Enum):
-    gemini_2_5_flash = "gemini-2.5-flash"
+    gemini_2_0_flash_lite = "gemini-2.0-flash-lite"
     gemini_2_0_flash_exp = "gemini-2.0-flash-exp"
 
 class Education(BaseModel):
@@ -120,7 +120,7 @@ class MatchInput(BaseModel):
         json_schema_extra={
             "example": {
                 "session_id": "test-session-123",
-                "model": "gemini-2.5-flash",
+                "model": "gemini-2.0-flash-lite",
                 "cv_input": "Skills: Python, SQL\nAspirations: Senior Data Scientist\nExperience: Company: Tech Corp; Title: Data Analyst; Start_date: 2020-01-01; End_date: Present; Description: Analyzed data\nEducation: School: Hanoi University; Degree: Bachelor; Major: Computer Science; Start_date: 2016-09-01; End_date: 2020-06-30\nName: John Doe\nEmail: john.doe@example.com\nPhone: +84-123-456-789",
                 "cv_id": 1,
                 "filters": {
@@ -133,7 +133,7 @@ class MatchInput(BaseModel):
     )
 
     session_id: Optional[str] = Field(None, description="ID phiên khớp, nếu có")
-    model: ModelName = Field(ModelName.gemini_2_5_flash, description="Mô hình AI sử dụng")
+    model: ModelName = Field(ModelName.gemini_2_0_flash_lite, description="Mô hình AI sử dụng")
     cv_input: Optional[str] = Field(None, description="Input CV dạng chuỗi")
     cv_id: Optional[int] = Field(None, ge=1, description="ID của CV trong cv_store")
     filters: Dict[str, Any] = Field(
@@ -240,7 +240,7 @@ class CandidateSearchInput(BaseModel):
         description="Bộ lọc CV. Allowed: 'experience_years' (int), 'education_level' (str), 'skills' (list), 'location' (str)."
     )
     limit: int = Field(20, ge=1, le=50, description="Số lượng CVs trả về")
-    model: Optional[str] = Field("gemini-2.5-flash", description="LLM model")
+    model: Optional[str] = Field("gemini-2.0-flash-lite", description="LLM model")
 
 class CandidateSearchResponse(BaseModel):
     """Response cho /candidates/search."""

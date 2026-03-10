@@ -108,6 +108,38 @@ class HealthCheckResponse(BaseModel):
     """Health check response"""
     status: str = "ok"
     timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+
+# ---- AI Chatbot Conversation Models (matching frontend interfaces) ----
+
+class ConversationMessage(BaseModel):
+    """A single message in the AI chatbot conversation (matches frontend ChatMessage)"""
+    id: str
+    conversationId: str
+    role: str  # 'user' | 'assistant'
+    content: str
+    createdAt: datetime
+
+
+class Conversation(BaseModel):
+    """AI chatbot conversation (matches frontend Conversation interface)"""
+    id: str
+    title: str
+    lastMessage: Optional[str] = None
+    createdAt: datetime
+    updateAt: datetime
+
+
+class SendMessageRequest(BaseModel):
+    """Request to send a message to the AI chatbot"""
+    conversationId: Optional[str] = None
+    message: str = Field(..., min_length=1, max_length=2000)
+
+
+class SendMessageResponse(BaseModel):
+    """Response after sending a message to the AI chatbot"""
+    message: ConversationMessage
+    conversationId: str
     version: str = "1.0.0"
     services: Dict[str, bool] = Field(
         default_factory=lambda: {

@@ -21,7 +21,7 @@ from services.rag_helpers import _prefix_doc_with_id  # Reuse QA prompt, adjust 
 
 logging.basicConfig(level=logging.INFO)
 
-def get_candidate_rag_components(model="gemini-2.0-flash-lite"):
+def get_candidate_rag_components(model="gemini-2.5-flash"):
     """Get RAG for candidate search (job query → CV docs)."""
     google_api_key = get_next_api_key()
     llm = ChatGoogleGenerativeAI(model=model, google_api_key=google_api_key, temperature=0.2)

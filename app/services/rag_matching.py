@@ -17,7 +17,7 @@ from prompts import rewrite_prompt, qa_prompt
 logging.basicConfig(level=logging.INFO)
 
 
-def get_rag_components(model="gemini-2.0-flash-lite"):
+def get_rag_components(model="gemini-2.5-flash"):
     llm = ChatGoogleGenerativeAI(
         model=model,
         google_api_key=get_next_api_key(),

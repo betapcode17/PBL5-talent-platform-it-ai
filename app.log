@@ -4219,3 +4219,618 @@ langchain_google_genai._common.GoogleGenerativeAIError: Error embedding content 
 2026-03-07 11:01:08,818 - INFO - Retrying google.genai._api_client.BaseApiClient._request_once in 4.437086284589201 seconds as it raised ClientError: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash-lite\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash-lite\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_input_token_count, limit: 0, model: gemini-2.0-flash-lite\nPlease retry in 49.146454816s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.0-flash-lite'}}, {'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel-FreeTier', 'quotaDimensions': {'model': 'gemini-2.0-flash-lite', 'location': 'global'}}, {'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_input_token_count', 'quotaId': 'GenerateContentInputTokensPerModelPerMinute-FreeTier', 'quotaDimensions': {'model': 'gemini-2.0-flash-lite', 'location': 'global'}}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '49s'}]}}.
 2026-03-07 11:01:13,392 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent "HTTP/1.1 429 Too Many Requests"
 2026-03-07 11:01:13,403 - INFO - Retrying google.genai._api_client.BaseApiClient._request_once in 8.98514278336204 seconds as it raised ClientError: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash-lite\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash-lite\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_input_token_count, limit: 0, model: gemini-2.0-flash-lite\nPlease retry in 44.566484043s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.0-flash-lite'}}, {'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.0-flash-lite'}}, {'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_input_token_count', 'quotaId': 'GenerateContentInputTokensPerModelPerMinute-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.0-flash-lite'}}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '44s'}]}}.
+2026-03-10 14:12:49,862 - INFO -  Loaded API key 2: AIzaSyBQnvMAHvy7V5uQ...
+2026-03-10 14:12:49,863 - INFO -  Loaded API key 3: AIzaSyACv5x8_rNNbLlB...
+2026-03-10 14:12:49,863 - INFO -  Loaded API key 4: AIzaSyD-B2y4CXtgVN_E...
+2026-03-10 14:12:49,864 - INFO -  Loaded API key 5: AIzaSyCD7VAuRlAS06cv...
+2026-03-10 14:12:49,864 - INFO -  API Key Manager initialized with 4 keys
+2026-03-10 14:13:11,863 - WARNING -  Static directory not found: E:\HOCKI6\PBL5\AI\static
+2026-03-10 14:13:11,864 - INFO -  Error handlers setup complete
+2026-03-10 14:13:11,864 - INFO -  Error handlers setup complete
+2026-03-10 14:13:11,869 - INFO -  Server started - job preload running in background
+2026-03-10 14:13:11,869 - INFO - Background: Attempting to preload jobs from PostgreSQL...
+2026-03-10 14:13:13,084 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-03-10 14:13:13,118 - INFO -  Initialized gemini-2.0-flash-lite with temperature=0.7
+2026-03-10 14:13:13,384 - INFO -  Initialized Chroma vectorstore for 'jobs' with Google Gemini Embedding API
+2026-03-10 14:13:13,559 - INFO -  Skipping PG preload: jobs collection already has 280 documents
+2026-03-10 14:13:14,224 - INFO -  Initialized Chroma vectorstore for 'jobs' with Google Gemini Embedding API
+2026-03-10 14:13:14,225 - INFO -  ChatbotRAG initialized (collection=jobs)
+2026-03-10 14:13:14,225 - INFO -  Created session: 154d9f11-0a89-4bd3-8eae-b0b38f160e2f
+2026-03-10 14:13:14,252 - INFO -  Background preload from PostgreSQL completed successfully
+2026-03-10 14:13:16,431 - INFO -  Using intent: jobs
+2026-03-10 14:13:17,018 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:batchEmbedContents "HTTP/1.1 200 OK"
+2026-03-10 14:13:17,169 - ERROR -  Retrieval failed: 1 validation error for RetrievedDocument
+id
+  Input should be a valid string [type=string_type, input_value=6267, input_type=int]
+    For further information visit https://errors.pydantic.dev/2.11/v/string_type
+2026-03-10 14:13:17,438 - INFO -  Job stats: 6338 active jobs, 2904 companies
+2026-03-10 14:13:17,456 - INFO - AFC is enabled with max remote calls: 10.
+2026-03-10 14:13:17,739 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent "HTTP/1.1 429 Too Many Requests"
+2026-03-10 14:13:17,741 - INFO - Retrying google.genai._api_client.BaseApiClient._request_once in 1.2666306750975775 seconds as it raised ClientError: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_input_token_count, limit: 0, model: gemini-2.0-flash-lite\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash-lite\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash-lite\nPlease retry in 40.643066333s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_input_token_count', 'quotaId': 'GenerateContentInputTokensPerModelPerMinute-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.0-flash-lite'}}, {'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.0-flash-lite'}}, {'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'model': 'gemini-2.0-flash-lite', 'location': 'global'}}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '40s'}]}}.
+2026-03-10 14:13:19,152 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent "HTTP/1.1 429 Too Many Requests"
+2026-03-10 14:13:19,154 - INFO - Retrying google.genai._api_client.BaseApiClient._request_once in 2.536854793131695 seconds as it raised ClientError: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash-lite\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash-lite\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_input_token_count, limit: 0, model: gemini-2.0-flash-lite\nPlease retry in 39.224560985s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.0-flash-lite'}}, {'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.0-flash-lite'}}, {'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_input_token_count', 'quotaId': 'GenerateContentInputTokensPerModelPerMinute-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.0-flash-lite'}}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '39s'}]}}.
+2026-03-10 14:13:21,809 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent "HTTP/1.1 429 Too Many Requests"
+2026-03-10 14:13:21,811 - INFO - Retrying google.genai._api_client.BaseApiClient._request_once in 4.988052340923106 seconds as it raised ClientError: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_input_token_count, limit: 0, model: gemini-2.0-flash-lite\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash-lite\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash-lite\nPlease retry in 36.565126529s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_input_token_count', 'quotaId': 'GenerateContentInputTokensPerModelPerMinute-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.0-flash-lite'}}, {'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel-FreeTier', 'quotaDimensions': {'model': 'gemini-2.0-flash-lite', 'location': 'global'}}, {'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'model': 'gemini-2.0-flash-lite', 'location': 'global'}}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '36s'}]}}.
+2026-03-10 14:13:26,902 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent "HTTP/1.1 429 Too Many Requests"
+2026-03-10 14:13:26,905 - INFO - Retrying google.genai._api_client.BaseApiClient._request_once in 8.748720300549463 seconds as it raised ClientError: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_input_token_count, limit: 0, model: gemini-2.0-flash-lite\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash-lite\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash-lite\nPlease retry in 31.470639122s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_input_token_count', 'quotaId': 'GenerateContentInputTokensPerModelPerMinute-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.0-flash-lite'}}, {'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.0-flash-lite'}}, {'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.0-flash-lite'}}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '31s'}]}}.
+2026-03-10 14:13:36,007 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent "HTTP/1.1 429 Too Many Requests"
+2026-03-10 14:13:36,010 - INFO - Retrying google.genai._api_client.BaseApiClient._request_once in 16.10018986128545 seconds as it raised ClientError: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash-lite\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash-lite\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_input_token_count, limit: 0, model: gemini-2.0-flash-lite\nPlease retry in 22.371421769s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'model': 'gemini-2.0-flash-lite', 'location': 'global'}}, {'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel-FreeTier', 'quotaDimensions': {'model': 'gemini-2.0-flash-lite', 'location': 'global'}}, {'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_input_token_count', 'quotaId': 'GenerateContentInputTokensPerModelPerMinute-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.0-flash-lite'}}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '22s'}]}}.
+2026-03-10 14:13:52,422 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent "HTTP/1.1 429 Too Many Requests"
+2026-03-10 14:13:52,449 - ERROR -  Error generating response: Error calling model 'gemini-2.0-flash-lite' (RESOURCE_EXHAUSTED): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_input_token_count, limit: 0, model: gemini-2.0-flash-lite\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash-lite\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash-lite\nPlease retry in 5.957025619s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_input_token_count', 'quotaId': 'GenerateContentInputTokensPerModelPerMinute-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.0-flash-lite'}}, {'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.0-flash-lite'}}, {'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.0-flash-lite'}}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '5s'}]}}
+2026-03-10 14:13:52,451 - ERROR -  Chat error: Error calling model 'gemini-2.0-flash-lite' (RESOURCE_EXHAUSTED): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_input_token_count, limit: 0, model: gemini-2.0-flash-lite\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash-lite\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash-lite\nPlease retry in 5.957025619s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_input_token_count', 'quotaId': 'GenerateContentInputTokensPerModelPerMinute-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.0-flash-lite'}}, {'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.0-flash-lite'}}, {'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.0-flash-lite'}}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '5s'}]}}
+2026-03-10 14:13:52,453 - ERROR -  Error processing message: Error calling model 'gemini-2.0-flash-lite' (RESOURCE_EXHAUSTED): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_input_token_count, limit: 0, model: gemini-2.0-flash-lite\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash-lite\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash-lite\nPlease retry in 5.957025619s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_input_token_count', 'quotaId': 'GenerateContentInputTokensPerModelPerMinute-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.0-flash-lite'}}, {'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.0-flash-lite'}}, {'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.0-flash-lite'}}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '5s'}]}}
+2026-03-10 14:13:52,752 - INFO -  Getting history for session: 154d9f11-0a89-4bd3-8eae-b0b38f160e2f
+2026-03-10 14:13:54,819 - INFO -  Clearing history for session: 154d9f11-0a89-4bd3-8eae-b0b38f160e2f
+2026-03-10 14:13:54,820 - INFO -  Cleared history for session: 154d9f11-0a89-4bd3-8eae-b0b38f160e2f
+2026-03-10 14:13:59,201 - INFO - Hybrid search: query='Python developer', filters={}, cv_id=None
+2026-03-10 14:14:00,343 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:batchEmbedContents "HTTP/1.1 200 OK"
+2026-03-10 14:14:00,513 - INFO - Hybrid search: 6 total, returning 3 jobs (keyword=6, semantic=6)
+2026-03-10 14:14:02,931 - INFO -  Phân tích 3237 jobs thành công
+2026-03-10 14:14:07,206 - ERROR -  match_cv_endpoint failed
+Traceback (most recent call last):
+  File "E:\HOCKI6\PBL5\AI\app\routers\matching.py", line 70, in match_cv_endpoint
+    cv_info = json.loads(cv["cv_info_json"])
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.11_3.11.2544.0_x64__qbz5n2kfra8p0\Lib\json\__init__.py", line 339, in loads
+    raise TypeError(f'the JSON object must be str, bytes or bytearray, '
+TypeError: the JSON object must be str, bytes or bytearray, not dict
+2026-03-10 14:15:33,842 - INFO -  Loaded API key 2: AIzaSyBQnvMAHvy7V5uQ...
+2026-03-10 14:15:33,843 - INFO -  Loaded API key 3: AIzaSyACv5x8_rNNbLlB...
+2026-03-10 14:15:33,844 - INFO -  Loaded API key 4: AIzaSyD-B2y4CXtgVN_E...
+2026-03-10 14:15:33,844 - INFO -  Loaded API key 5: AIzaSyCD7VAuRlAS06cv...
+2026-03-10 14:15:33,844 - INFO -  API Key Manager initialized with 4 keys
+2026-03-10 14:15:40,776 - WARNING -  Static directory not found: E:\HOCKI6\PBL5\AI\static
+2026-03-10 14:15:40,777 - INFO -  Error handlers setup complete
+2026-03-10 14:15:40,778 - INFO -  Error handlers setup complete
+2026-03-10 14:15:40,781 - INFO -  Server started - job preload running in background
+2026-03-10 14:15:40,782 - INFO - Background: Attempting to preload jobs from PostgreSQL...
+2026-03-10 14:15:41,810 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-03-10 14:15:42,178 - INFO -  Initialized Chroma vectorstore for 'jobs' with Google Gemini Embedding API
+2026-03-10 14:15:42,379 - INFO -  Skipping PG preload: jobs collection already has 280 documents
+2026-03-10 14:15:42,379 - INFO -  Background preload from PostgreSQL completed successfully
+2026-03-10 14:17:50,434 - INFO -  Loaded API key 2: AIzaSyBQnvMAHvy7V5uQ...
+2026-03-10 14:17:50,434 - INFO -  Loaded API key 3: AIzaSyACv5x8_rNNbLlB...
+2026-03-10 14:17:50,434 - INFO -  Loaded API key 4: AIzaSyD-B2y4CXtgVN_E...
+2026-03-10 14:17:50,434 - INFO -  Loaded API key 5: AIzaSyCD7VAuRlAS06cv...
+2026-03-10 14:17:50,434 - INFO -  API Key Manager initialized with 4 keys
+2026-03-10 14:17:57,844 - WARNING -  Static directory not found: E:\HOCKI6\PBL5\AI\static
+2026-03-10 14:17:57,844 - INFO -  Error handlers setup complete
+2026-03-10 14:17:57,845 - INFO -  Error handlers setup complete
+2026-03-10 14:17:57,848 - INFO -  Server started - job preload running in background
+2026-03-10 14:17:57,848 - INFO - Background: Attempting to preload jobs from PostgreSQL...
+2026-03-10 14:17:58,893 - INFO -  Initialized gemini-2.5-flash with temperature=0.7
+2026-03-10 14:17:58,953 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-03-10 14:17:59,227 - INFO -  Initialized Chroma vectorstore for 'jobs' with Google Gemini Embedding API
+2026-03-10 14:17:59,411 - INFO -  Skipping PG preload: jobs collection already has 280 documents
+2026-03-10 14:17:59,870 - INFO -  Initialized Chroma vectorstore for 'jobs' with Google Gemini Embedding API
+2026-03-10 14:17:59,871 - INFO -  ChatbotRAG initialized (collection=jobs)
+2026-03-10 14:17:59,909 - INFO -  Background preload from PostgreSQL completed successfully
+2026-03-10 14:18:04,012 - INFO -  Created session: 4ca77efb-e56e-4c8e-a66a-4469f66301ed
+2026-03-10 14:18:06,142 - INFO -  Using intent: jobs
+2026-03-10 14:18:06,729 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:batchEmbedContents "HTTP/1.1 200 OK"
+2026-03-10 14:18:06,875 - ERROR -  Retrieval failed: 1 validation error for RetrievedDocument
+id
+  Input should be a valid string [type=string_type, input_value=6267, input_type=int]
+    For further information visit https://errors.pydantic.dev/2.11/v/string_type
+2026-03-10 14:18:07,088 - INFO -  Job stats: 6338 active jobs, 2904 companies
+2026-03-10 14:18:07,091 - INFO - AFC is enabled with max remote calls: 10.
+2026-03-10 14:18:09,754 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-10 14:18:09,758 - INFO -  Response generated (226 chars)
+2026-03-10 14:18:09,759 - INFO -  Message processed (session=4ca77efb-e56e-4c8e-a66a-4469f66301ed)
+2026-03-10 14:18:11,803 - INFO -  Getting history for session: 4ca77efb-e56e-4c8e-a66a-4469f66301ed
+2026-03-10 14:18:13,853 - INFO -  Clearing history for session: 4ca77efb-e56e-4c8e-a66a-4469f66301ed
+2026-03-10 14:18:13,854 - INFO -  Cleared history for session: 4ca77efb-e56e-4c8e-a66a-4469f66301ed
+2026-03-10 14:18:18,105 - INFO - Hybrid search: query='Python developer', filters={}, cv_id=None
+2026-03-10 14:18:18,686 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:batchEmbedContents "HTTP/1.1 200 OK"
+2026-03-10 14:18:18,760 - INFO - Hybrid search: 6 total, returning 3 jobs (keyword=6, semantic=6)
+2026-03-10 14:18:20,987 - INFO -  Phân tích 3237 jobs thành công
+2026-03-10 14:18:25,154 - ERROR -  match_cv_endpoint failed
+Traceback (most recent call last):
+  File "E:\HOCKI6\PBL5\AI\app\routers\matching.py", line 70, in match_cv_endpoint
+    cv_info = json.loads(cv["cv_info_json"])
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.11_3.11.2544.0_x64__qbz5n2kfra8p0\Lib\json\__init__.py", line 339, in loads
+    raise TypeError(f'the JSON object must be str, bytes or bytearray, '
+TypeError: the JSON object must be str, bytes or bytearray, not dict
+2026-03-10 14:20:23,166 - INFO -  Loaded API key 2: AIzaSyBQnvMAHvy7V5uQ...
+2026-03-10 14:20:23,167 - INFO -  Loaded API key 3: AIzaSyACv5x8_rNNbLlB...
+2026-03-10 14:20:23,167 - INFO -  Loaded API key 4: AIzaSyD-B2y4CXtgVN_E...
+2026-03-10 14:20:23,167 - INFO -  Loaded API key 5: AIzaSyCD7VAuRlAS06cv...
+2026-03-10 14:20:23,167 - INFO -  API Key Manager initialized with 4 keys
+2026-03-10 14:20:30,086 - WARNING -  Static directory not found: E:\HOCKI6\PBL5\AI\static
+2026-03-10 14:20:30,087 - INFO -  Error handlers setup complete
+2026-03-10 14:20:30,087 - INFO -  Error handlers setup complete
+2026-03-10 14:20:30,089 - INFO -  Server started - job preload running in background
+2026-03-10 14:20:30,090 - INFO - Background: Attempting to preload jobs from PostgreSQL...
+2026-03-10 14:20:31,008 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-03-10 14:20:31,370 - INFO -  Initialized Chroma vectorstore for 'jobs' with Google Gemini Embedding API
+2026-03-10 14:20:31,568 - INFO -  Skipping PG preload: jobs collection already has 280 documents
+2026-03-10 14:20:31,570 - INFO -  Background preload from PostgreSQL completed successfully
+2026-03-10 14:21:37,070 - INFO -  Initialized gemini-2.5-flash with temperature=0.7
+2026-03-10 14:21:37,071 - INFO -  ChatbotRAG initialized (collection=jobs)
+2026-03-10 14:21:37,072 - INFO -  Created session: 3ab0e2f8-bc23-42f9-a86d-1e18bcb4fb8e
+2026-03-10 14:21:37,130 - INFO -  Intent detected (keyword): jobs
+2026-03-10 14:21:37,131 - INFO -  Using intent: jobs
+2026-03-10 14:21:37,861 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:batchEmbedContents "HTTP/1.1 200 OK"
+2026-03-10 14:21:38,174 - ERROR -  Retrieval failed: 1 validation error for RetrievedDocument
+id
+  Input should be a valid string [type=string_type, input_value=6143, input_type=int]
+    For further information visit https://errors.pydantic.dev/2.11/v/string_type
+2026-03-10 14:21:38,497 - INFO -  Job stats: 6338 active jobs, 2904 companies
+2026-03-10 14:21:38,569 - INFO - AFC is enabled with max remote calls: 10.
+2026-03-10 14:21:41,610 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-10 14:21:41,636 - INFO -  Response generated (205 chars)
+2026-03-10 14:21:41,636 - INFO -  Message processed (session=3ab0e2f8-bc23-42f9-a86d-1e18bcb4fb8e)
+2026-03-10 14:22:36,074 - INFO -  Created session: eb01043c-bc60-4436-9951-0556dafc3e38
+2026-03-10 14:22:36,119 - INFO -  Intent detected (keyword): jobs
+2026-03-10 14:22:36,120 - INFO -  Using intent: jobs
+2026-03-10 14:22:36,678 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:batchEmbedContents "HTTP/1.1 200 OK"
+2026-03-10 14:22:36,772 - ERROR -  Retrieval failed: 1 validation error for RetrievedDocument
+id
+  Input should be a valid string [type=string_type, input_value=6267, input_type=int]
+    For further information visit https://errors.pydantic.dev/2.11/v/string_type
+2026-03-10 14:22:37,049 - INFO -  Job stats: 6338 active jobs, 2904 companies
+2026-03-10 14:22:37,065 - INFO - AFC is enabled with max remote calls: 10.
+2026-03-10 14:22:40,499 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-10 14:22:40,502 - INFO -  Response generated (287 chars)
+2026-03-10 14:22:40,502 - INFO -  Message processed (session=eb01043c-bc60-4436-9951-0556dafc3e38)
+2026-03-10 14:24:54,271 - INFO -  Loaded API key 2: AIzaSyBQnvMAHvy7V5uQ...
+2026-03-10 14:24:54,272 - INFO -  Loaded API key 3: AIzaSyACv5x8_rNNbLlB...
+2026-03-10 14:24:54,273 - INFO -  Loaded API key 3: AIzaSyACv5x8_rNNbLlB...
+2026-03-10 14:24:54,273 - INFO -  Loaded API key 4: AIzaSyD-B2y4CXtgVN_E...
+2026-03-10 14:24:54,273 - INFO -  Loaded API key 4: AIzaSyD-B2y4CXtgVN_E...
+2026-03-10 14:24:54,273 - INFO -  Loaded API key 5: AIzaSyCD7VAuRlAS06cv...
+2026-03-10 14:24:54,273 - INFO -  Loaded API key 5: AIzaSyCD7VAuRlAS06cv...
+2026-03-10 14:24:54,273 - INFO -  API Key Manager initialized with 4 keys
+2026-03-10 14:24:54,274 - INFO -  API Key Manager initialized with 4 keys
+2026-03-10 14:25:04,661 - WARNING -  Static directory not found: E:\HOCKI6\PBL5\AI\static
+2026-03-10 14:25:04,661 - INFO -  Error handlers setup complete
+2026-03-10 14:25:04,662 - INFO -  Error handlers setup complete
+2026-03-10 14:25:04,662 - WARNING -  Static directory not found: E:\HOCKI6\PBL5\AI\static
+2026-03-10 14:25:04,662 - INFO -  Error handlers setup complete
+2026-03-10 14:25:04,662 - INFO -  Error handlers setup complete
+2026-03-10 14:25:04,666 - INFO -  Server started - job preload running in background
+2026-03-10 14:25:04,667 - INFO - Background: Attempting to preload jobs from PostgreSQL...
+2026-03-10 14:25:04,669 - INFO -  Server started - job preload running in background
+2026-03-10 14:25:04,670 - INFO - Background: Attempting to preload jobs from PostgreSQL...
+2026-03-10 14:25:06,905 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-03-10 14:25:07,351 - INFO -  Initialized Chroma vectorstore for 'jobs' with Google Gemini Embedding API
+2026-03-10 14:25:07,683 - INFO -  Skipping PG preload: jobs collection already has 280 documents
+2026-03-10 14:25:07,709 - INFO -  Skipping PG preload: jobs collection already has 280 documents
+2026-03-10 14:25:33,229 - INFO -  Loaded API key 2: AIzaSyBQnvMAHvy7V5uQ...
+2026-03-10 14:25:33,232 - INFO -  Loaded API key 3: AIzaSyACv5x8_rNNbLlB...
+2026-03-10 14:25:33,234 - INFO -  Loaded API key 4: AIzaSyD-B2y4CXtgVN_E...
+2026-03-10 14:25:33,234 - INFO -  Loaded API key 4: AIzaSyD-B2y4CXtgVN_E...
+2026-03-10 14:25:33,235 - INFO -  Loaded API key 5: AIzaSyCD7VAuRlAS06cv...
+2026-03-10 14:25:33,235 - INFO -  Loaded API key 5: AIzaSyCD7VAuRlAS06cv...
+2026-03-10 14:25:33,237 - INFO -  API Key Manager initialized with 4 keys
+2026-03-10 14:25:33,237 - INFO -  API Key Manager initialized with 4 keys
+2026-03-10 14:25:38,821 - WARNING -  Static directory not found: E:\HOCKI6\PBL5\AI\static
+2026-03-10 14:25:38,822 - WARNING -  Static directory not found: E:\HOCKI6\PBL5\AI\static
+2026-03-10 14:25:38,822 - INFO -  Error handlers setup complete
+2026-03-10 14:25:38,822 - INFO -  Error handlers setup complete
+2026-03-10 14:25:38,822 - INFO -  Error handlers setup complete
+2026-03-10 14:25:38,822 - INFO -  Error handlers setup complete
+2026-03-10 14:25:38,825 - INFO -  Server started - job preload running in background
+2026-03-10 14:25:38,825 - INFO - Background: Attempting to preload jobs from PostgreSQL...
+2026-03-10 14:25:40,119 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-03-10 14:25:40,129 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-03-10 14:25:40,427 - INFO -  Initialized Chroma vectorstore for 'jobs' with Google Gemini Embedding API
+2026-03-10 14:25:40,444 - INFO -  Initialized Chroma vectorstore for 'jobs' with Google Gemini Embedding API
+2026-03-10 14:25:40,626 - INFO -  Skipping PG preload: jobs collection already has 280 documents
+2026-03-10 14:25:40,627 - INFO -  Background preload from PostgreSQL completed successfully
+2026-03-10 14:25:40,640 - INFO -  Skipping PG preload: jobs collection already has 280 documents
+2026-03-10 14:25:40,642 - INFO -  Background preload from PostgreSQL completed successfully
+2026-03-10 14:26:00,823 - INFO -  Initialized gemini-2.5-flash with temperature=0.7
+2026-03-10 14:26:00,823 - INFO -  ChatbotRAG initialized (collection=jobs)
+2026-03-10 14:26:00,823 - INFO -  Created session: 1ab7674b-8c44-4914-bbbe-03dc002e68e9
+2026-03-10 14:26:00,869 - INFO - AFC is enabled with max remote calls: 10.
+2026-03-10 14:26:03,524 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-10 14:26:03,543 - INFO -  Intent detected (LLM): jobs
+2026-03-10 14:26:03,544 - INFO -  Using intent: jobs
+2026-03-10 14:26:04,106 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:batchEmbedContents "HTTP/1.1 200 OK"
+2026-03-10 14:26:04,254 - INFO -  Retrieved 5 documents
+2026-03-10 14:26:04,974 - INFO - AFC is enabled with max remote calls: 10.
+2026-03-10 14:26:10,078 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-10 14:26:10,082 - INFO -  Response generated (1924 chars)
+2026-03-10 14:26:10,082 - INFO -  Message processed (session=1ab7674b-8c44-4914-bbbe-03dc002e68e9)
+2026-03-10 14:42:58,616 - INFO -  Loaded API key 2: AIzaSyBQnvMAHvy7V5uQ...
+2026-03-10 14:42:58,618 - INFO -  Loaded API key 3: AIzaSyACv5x8_rNNbLlB...
+2026-03-10 14:42:58,618 - INFO -  Loaded API key 3: AIzaSyACv5x8_rNNbLlB...
+2026-03-10 14:42:58,618 - INFO -  Loaded API key 4: AIzaSyD-B2y4CXtgVN_E...
+2026-03-10 14:42:58,618 - INFO -  Loaded API key 5: AIzaSyCD7VAuRlAS06cv...
+2026-03-10 14:42:58,618 - INFO -  Loaded API key 5: AIzaSyCD7VAuRlAS06cv...
+2026-03-10 14:42:58,618 - INFO -  API Key Manager initialized with 4 keys
+2026-03-10 14:42:58,618 - INFO -  API Key Manager initialized with 4 keys
+2026-03-10 14:43:06,779 - WARNING -  Static directory not found: E:\HOCKI6\PBL5\AI\static
+2026-03-10 14:43:06,779 - INFO -  Error handlers setup complete
+2026-03-10 14:43:06,783 - INFO -  Error handlers setup complete
+2026-03-10 14:43:06,788 - INFO -  Server started - job preload running in background
+2026-03-10 14:43:06,789 - INFO - Background: Attempting to preload jobs from PostgreSQL...
+2026-03-10 14:43:06,795 - WARNING -  Static directory not found: E:\HOCKI6\PBL5\AI\static
+2026-03-10 14:43:06,795 - INFO -  Error handlers setup complete
+2026-03-10 14:43:06,796 - INFO -  Error handlers setup complete
+2026-03-10 14:43:06,798 - INFO -  Server started - job preload running in background
+2026-03-10 14:43:06,798 - INFO - Background: Attempting to preload jobs from PostgreSQL...
+2026-03-10 14:43:08,365 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-03-10 14:43:08,365 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-03-10 14:43:08,830 - INFO -  Initialized Chroma vectorstore for 'jobs' with Google Gemini Embedding API
+2026-03-10 14:43:08,831 - INFO -  Initialized Chroma vectorstore for 'jobs' with Google Gemini Embedding API
+2026-03-10 14:43:09,125 - INFO -  Skipping PG preload: jobs collection already has 280 documents
+2026-03-10 14:43:09,135 - INFO -  Skipping PG preload: jobs collection already has 280 documents
+2026-03-10 14:44:21,192 - INFO -  Loaded API key 2: AIzaSyBQnvMAHvy7V5uQ...
+2026-03-10 14:44:21,192 - INFO -  Loaded API key 2: AIzaSyBQnvMAHvy7V5uQ...
+2026-03-10 14:44:21,201 - INFO -  Loaded API key 3: AIzaSyACv5x8_rNNbLlB...
+2026-03-10 14:44:21,202 - INFO -  Loaded API key 3: AIzaSyACv5x8_rNNbLlB...
+2026-03-10 14:44:21,203 - INFO -  Loaded API key 4: AIzaSyD-B2y4CXtgVN_E...
+2026-03-10 14:44:21,203 - INFO -  Loaded API key 4: AIzaSyD-B2y4CXtgVN_E...
+2026-03-10 14:44:21,203 - INFO -  Loaded API key 5: AIzaSyCD7VAuRlAS06cv...
+2026-03-10 14:44:21,203 - INFO -  Loaded API key 5: AIzaSyCD7VAuRlAS06cv...
+2026-03-10 14:44:21,203 - INFO -  API Key Manager initialized with 4 keys
+2026-03-10 14:44:39,906 - WARNING -  Static directory not found: E:\HOCKI6\PBL5\AI\static
+2026-03-10 14:44:39,910 - INFO -  Error handlers setup complete
+2026-03-10 14:44:39,916 - INFO -  Error handlers setup complete
+2026-03-10 14:44:39,918 - WARNING -  Static directory not found: E:\HOCKI6\PBL5\AI\static
+2026-03-10 14:44:39,923 - INFO -  Error handlers setup complete
+2026-03-10 14:44:39,924 - INFO -  Error handlers setup complete
+2026-03-10 14:44:39,927 - INFO -  Server started - job preload running in background
+2026-03-10 14:44:39,928 - INFO - Background: Attempting to preload jobs from PostgreSQL...
+2026-03-10 14:44:39,928 - INFO - Background: Attempting to preload jobs from PostgreSQL...
+2026-03-10 14:44:46,182 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-03-10 14:44:46,181 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-03-10 14:44:47,434 - INFO -  Initialized Chroma vectorstore for 'jobs' with Google Gemini Embedding API
+2026-03-10 14:44:47,439 - INFO -  Initialized Chroma vectorstore for 'jobs' with Google Gemini Embedding API
+2026-03-10 14:44:48,255 - INFO -  Skipping PG preload: jobs collection already has 280 documents
+2026-03-10 14:44:48,287 - INFO -  Skipping PG preload: jobs collection already has 280 documents
+2026-03-10 14:45:30,333 - INFO -  Loaded API key 2: AIzaSyBQnvMAHvy7V5uQ...
+2026-03-10 14:45:30,336 - INFO -  Loaded API key 3: AIzaSyACv5x8_rNNbLlB...
+2026-03-10 14:45:30,336 - INFO -  Loaded API key 3: AIzaSyACv5x8_rNNbLlB...
+2026-03-10 14:45:30,336 - INFO -  Loaded API key 4: AIzaSyD-B2y4CXtgVN_E...
+2026-03-10 14:45:30,336 - INFO -  Loaded API key 5: AIzaSyCD7VAuRlAS06cv...
+2026-03-10 14:45:30,336 - INFO -  Loaded API key 4: AIzaSyD-B2y4CXtgVN_E...
+2026-03-10 14:45:30,336 - INFO -  API Key Manager initialized with 4 keys
+2026-03-10 14:45:30,336 - INFO -  Loaded API key 5: AIzaSyCD7VAuRlAS06cv...
+2026-03-10 14:45:30,337 - INFO -  API Key Manager initialized with 4 keys
+2026-03-10 14:45:37,226 - WARNING -  Static directory not found: E:\HOCKI6\PBL5\AI\static
+2026-03-10 14:45:37,227 - WARNING -  Static directory not found: E:\HOCKI6\PBL5\AI\static
+2026-03-10 14:45:37,228 - INFO -  Error handlers setup complete
+2026-03-10 14:45:37,228 - INFO -  Error handlers setup complete
+2026-03-10 14:45:37,230 - INFO -  Error handlers setup complete
+2026-03-10 14:45:37,230 - INFO -  Error handlers setup complete
+2026-03-10 14:45:37,233 - INFO -  Server started - job preload running in background
+2026-03-10 14:45:37,234 - INFO - Background: Attempting to preload jobs from PostgreSQL...
+2026-03-10 14:45:37,234 - INFO - Background: Attempting to preload jobs from PostgreSQL...
+2026-03-10 14:45:38,387 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-03-10 14:45:38,388 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-03-10 14:45:38,711 - INFO -  Initialized Chroma vectorstore for 'jobs' with Google Gemini Embedding API
+2026-03-10 14:45:38,715 - INFO -  Initialized Chroma vectorstore for 'jobs' with Google Gemini Embedding API
+2026-03-10 14:45:38,921 - INFO -  Skipping PG preload: jobs collection already has 280 documents
+2026-03-10 14:45:38,923 - INFO -  Background preload from PostgreSQL completed successfully
+2026-03-10 14:45:38,935 - INFO -  Skipping PG preload: jobs collection already has 280 documents
+2026-03-10 14:45:38,936 - INFO -  Background preload from PostgreSQL completed successfully
+2026-03-10 14:46:51,716 - INFO -  Loaded API key 2: AIzaSyBQnvMAHvy7V5uQ...
+2026-03-10 14:46:51,718 - INFO -  Loaded API key 3: AIzaSyACv5x8_rNNbLlB...
+2026-03-10 14:46:51,718 - INFO -  Loaded API key 4: AIzaSyD-B2y4CXtgVN_E...
+2026-03-10 14:46:51,718 - INFO -  Loaded API key 4: AIzaSyD-B2y4CXtgVN_E...
+2026-03-10 14:46:51,718 - INFO -  Loaded API key 5: AIzaSyCD7VAuRlAS06cv...
+2026-03-10 14:46:51,718 - INFO -  Loaded API key 5: AIzaSyCD7VAuRlAS06cv...
+2026-03-10 14:46:51,719 - INFO -  API Key Manager initialized with 4 keys
+2026-03-10 14:46:51,719 - INFO -  API Key Manager initialized with 4 keys
+2026-03-10 14:46:59,744 - WARNING -  Static directory not found: E:\HOCKI6\PBL5\AI\static
+2026-03-10 14:46:59,745 - WARNING -  Static directory not found: E:\HOCKI6\PBL5\AI\static
+2026-03-10 14:46:59,745 - INFO -  Error handlers setup complete
+2026-03-10 14:46:59,745 - INFO -  Error handlers setup complete
+2026-03-10 14:46:59,746 - INFO -  Error handlers setup complete
+2026-03-10 14:46:59,746 - INFO -  Error handlers setup complete
+2026-03-10 14:46:59,749 - INFO -  Server started - job preload running in background
+2026-03-10 14:46:59,750 - INFO - Background: Attempting to preload jobs from PostgreSQL...
+2026-03-10 14:47:00,907 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-03-10 14:47:01,335 - INFO -  Initialized Chroma vectorstore for 'jobs' with Google Gemini Embedding API
+2026-03-10 14:47:01,547 - INFO -  Skipping PG preload: jobs collection already has 280 documents
+2026-03-10 14:47:01,560 - INFO -  Skipping PG preload: jobs collection already has 280 documents
+2026-03-10 14:47:30,548 - INFO -  Loaded API key 2: AIzaSyBQnvMAHvy7V5uQ...
+2026-03-10 14:47:30,548 - INFO -  Loaded API key 3: AIzaSyACv5x8_rNNbLlB...
+2026-03-10 14:47:30,548 - INFO -  Loaded API key 3: AIzaSyACv5x8_rNNbLlB...
+2026-03-10 14:47:30,550 - INFO -  Loaded API key 4: AIzaSyD-B2y4CXtgVN_E...
+2026-03-10 14:47:30,550 - INFO -  Loaded API key 4: AIzaSyD-B2y4CXtgVN_E...
+2026-03-10 14:47:30,550 - INFO -  Loaded API key 5: AIzaSyCD7VAuRlAS06cv...
+2026-03-10 14:47:30,550 - INFO -  API Key Manager initialized with 4 keys
+2026-03-10 14:47:39,301 - WARNING -  Static directory not found: E:\HOCKI6\PBL5\AI\static
+2026-03-10 14:47:39,301 - WARNING -  Static directory not found: E:\HOCKI6\PBL5\AI\static
+2026-03-10 14:47:39,301 - INFO -  Error handlers setup complete
+2026-03-10 14:47:39,302 - INFO -  Error handlers setup complete
+2026-03-10 14:47:39,302 - INFO -  Error handlers setup complete
+2026-03-10 14:47:39,305 - INFO -  Server started - job preload running in background
+2026-03-10 14:47:39,305 - INFO -  Server started - job preload running in background
+2026-03-10 14:47:39,305 - INFO - Background: Attempting to preload jobs from PostgreSQL...
+2026-03-10 14:47:39,305 - INFO - Background: Attempting to preload jobs from PostgreSQL...
+2026-03-10 14:47:40,822 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-03-10 14:47:40,822 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-03-10 14:47:41,224 - INFO -  Initialized Chroma vectorstore for 'jobs' with Google Gemini Embedding API
+2026-03-10 14:47:41,227 - INFO -  Initialized Chroma vectorstore for 'jobs' with Google Gemini Embedding API
+2026-03-10 14:47:41,433 - INFO -  Skipping PG preload: jobs collection already has 280 documents
+2026-03-10 14:47:41,446 - INFO -  Skipping PG preload: jobs collection already has 280 documents
+2026-03-10 14:48:32,132 - INFO -  Loaded API key 2: AIzaSyBQnvMAHvy7V5uQ...
+2026-03-10 14:48:32,137 - INFO -  Loaded API key 3: AIzaSyACv5x8_rNNbLlB...
+2026-03-10 14:48:32,138 - INFO -  Loaded API key 4: AIzaSyD-B2y4CXtgVN_E...
+2026-03-10 14:48:32,138 - INFO -  Loaded API key 4: AIzaSyD-B2y4CXtgVN_E...
+2026-03-10 14:48:32,138 - INFO -  Loaded API key 5: AIzaSyCD7VAuRlAS06cv...
+2026-03-10 14:48:32,138 - INFO -  API Key Manager initialized with 4 keys
+
+2026-03-10 14:48:32,138 - INFO -  API Key Manager initialized with 4 keys
+2026-03-10 14:48:40,176 - WARNING -  Static directory not found: E:\HOCKI6\PBL5\AI\static
+2026-03-10 14:48:40,177 - INFO -  Error handlers setup complete
+2026-03-10 14:48:40,177 - WARNING -  Static directory not found: E:\HOCKI6\PBL5\AI\static
+2026-03-10 14:48:40,177 - INFO -  Error handlers setup complete
+2026-03-10 14:48:40,178 - INFO -  Error handlers setup complete
+2026-03-10 14:48:40,179 - INFO -  Error handlers setup complete
+2026-03-10 14:48:40,181 - INFO -  Server started - job preload running in background
+2026-03-10 14:48:40,181 - INFO -  Server started - job preload running in background
+2026-03-10 14:48:40,181 - INFO - Background: Attempting to preload jobs from PostgreSQL...
+2026-03-10 14:48:40,181 - INFO - Background: Attempting to preload jobs from PostgreSQL...
+2026-03-10 14:48:41,339 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-03-10 14:48:41,340 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-03-10 14:48:41,740 - INFO -  Initialized Chroma vectorstore for 'jobs' with Google Gemini Embedding API
+2026-03-10 14:48:41,991 - INFO -  Skipping PG preload: jobs collection already has 280 documents
+2026-03-10 14:48:41,997 - INFO -  Skipping PG preload: jobs collection already has 280 documents
+2026-03-10 14:49:11,131 - INFO -  Loaded API key 2: AIzaSyBQnvMAHvy7V5uQ...
+2026-03-10 14:49:11,133 - INFO -  Loaded API key 3: AIzaSyACv5x8_rNNbLlB...
+2026-03-10 14:49:11,133 - INFO -  Loaded API key 4: AIzaSyD-B2y4CXtgVN_E...
+2026-03-10 14:49:11,133 - INFO -  Loaded API key 4: AIzaSyD-B2y4CXtgVN_E...
+2026-03-10 14:49:11,133 - INFO -  Loaded API key 5: AIzaSyCD7VAuRlAS06cv...
+2026-03-10 14:49:11,134 - INFO -  API Key Manager initialized with 4 keys
+2026-03-10 14:49:11,134 - INFO -  API Key Manager initialized with 4 keys
+2026-03-10 14:49:17,547 - WARNING -  Static directory not found: E:\HOCKI6\PBL5\AI\static
+2026-03-10 14:49:17,547 - INFO -  Error handlers setup complete
+2026-03-10 14:49:17,547 - INFO -  Error handlers setup complete
+2026-03-10 14:49:17,548 - WARNING -  Static directory not found: E:\HOCKI6\PBL5\AI\static
+2026-03-10 14:49:17,548 - INFO -  Error handlers setup complete
+2026-03-10 14:49:17,549 - INFO -  Error handlers setup complete
+2026-03-10 14:49:17,549 - INFO -  Server started - job preload running in background
+2026-03-10 14:49:17,550 - INFO - Background: Attempting to preload jobs from PostgreSQL...
+2026-03-10 14:49:17,551 - INFO -  Server started - job preload running in background
+2026-03-10 14:49:17,551 - INFO - Background: Attempting to preload jobs from PostgreSQL...
+2026-03-10 14:49:18,651 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-03-10 14:49:18,651 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-03-10 14:49:18,936 - INFO -  Initialized Chroma vectorstore for 'jobs' with Google Gemini Embedding API
+2026-03-10 14:49:18,937 - INFO -  Initialized Chroma vectorstore for 'jobs' with Google Gemini Embedding API
+2026-03-10 14:49:19,126 - INFO -  Skipping PG preload: jobs collection already has 280 documents
+2026-03-10 14:49:19,126 - INFO -  Skipping PG preload: jobs collection already has 280 documents
+2026-03-10 14:49:19,127 - INFO -  Background preload from PostgreSQL completed successfully
+2026-03-10 14:52:09,799 - WARNING - Validation Error: 1 validation error:
+  {'type': 'json_invalid', 'loc': ('body', 71), 'msg': 'JSON decode error', 'input': {}, 'ctx': {'error': 'Expecting property name enclosed in double quotes'}}
+
+  File "E:\HOCKI6\PBL5\AI\app\routers\chat.py", line 27, in send_message
+    POST /api/chat/message
+2026-03-10 14:52:18,172 - INFO -  Initialized gemini-2.5-flash with temperature=0.7
+2026-03-10 14:52:18,172 - INFO -  ChatbotRAG initialized (collection=jobs)
+2026-03-10 14:52:18,176 - INFO -  Created session: 67e07e50-481a-440b-9891-240db71fdf60
+2026-03-10 14:52:18,197 - INFO -  Intent detected (keyword): jobs
+2026-03-10 14:52:18,198 - INFO -  Using intent: jobs
+2026-03-10 14:52:19,079 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:batchEmbedContents "HTTP/1.1 200 OK"
+2026-03-10 14:52:19,474 - INFO -  Hybrid search returned 5 docs
+2026-03-10 14:52:19,582 - INFO - AFC is enabled with max remote calls: 10.
+2026-03-10 14:52:23,283 - INFO -  Loaded API key 2: AIzaSyBQnvMAHvy7V5uQ...
+2026-03-10 14:52:23,283 - INFO -  Loaded API key 3: AIzaSyACv5x8_rNNbLlB...
+2026-03-10 14:52:23,284 - INFO -  Loaded API key 4: AIzaSyD-B2y4CXtgVN_E...
+2026-03-10 14:52:23,284 - INFO -  Loaded API key 5: AIzaSyCD7VAuRlAS06cv...
+2026-03-10 14:52:23,284 - INFO -  API Key Manager initialized with 4 keys
+2026-03-10 14:52:25,597 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-10 14:52:25,627 - INFO -  Response generated (1631 chars)
+2026-03-10 14:52:25,629 - INFO -  Message processed (session=67e07e50-481a-440b-9891-240db71fdf60)
+2026-03-10 14:52:30,166 - WARNING -  Static directory not found: E:\HOCKI6\PBL5\AI\static
+2026-03-10 14:52:30,166 - INFO -  Error handlers setup complete
+2026-03-10 14:52:30,167 - INFO -  Error handlers setup complete
+2026-03-10 14:52:30,169 - INFO -  Server started - job preload running in background
+2026-03-10 14:52:30,169 - INFO - Background: Attempting to preload jobs from PostgreSQL...
+2026-03-10 14:52:31,117 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-03-10 14:52:31,448 - INFO -  Initialized Chroma vectorstore for 'jobs' with Google Gemini Embedding API
+2026-03-10 14:52:31,625 - INFO -  Skipping PG preload: jobs collection already has 280 documents
+2026-03-10 14:52:31,625 - INFO -  Background preload from PostgreSQL completed successfully
+2026-03-10 14:55:36,994 - INFO -  Initialized gemini-2.5-flash with temperature=0.7
+2026-03-10 14:55:36,995 - INFO -  ChatbotRAG initialized (collection=jobs)
+2026-03-10 14:55:36,997 - INFO -  Created session: 460373b2-22c8-4a28-a412-a98b9c082725
+2026-03-10 14:55:37,101 - INFO - AFC is enabled with max remote calls: 10.
+2026-03-10 14:55:39,285 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-10 14:55:39,332 - INFO -  Intent detected (LLM): jobs
+2026-03-10 14:55:39,333 - INFO -  Using intent: jobs
+2026-03-10 14:55:39,894 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:batchEmbedContents "HTTP/1.1 200 OK"
+2026-03-10 14:55:40,355 - INFO -  Hybrid search returned 5 docs
+2026-03-10 14:55:40,360 - INFO - AFC is enabled with max remote calls: 10.
+2026-03-10 14:55:53,453 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-10 14:55:53,471 - INFO -  Response generated (2004 chars)
+2026-03-10 14:55:53,472 - INFO -  Message processed (session=460373b2-22c8-4a28-a412-a98b9c082725)
+2026-03-10 14:59:24,217 - INFO -  Loaded API key 2: AIzaSyBQnvMAHvy7V5uQ...
+2026-03-10 14:59:24,218 - INFO -  Loaded API key 3: AIzaSyACv5x8_rNNbLlB...
+2026-03-10 14:59:24,218 - INFO -  Loaded API key 4: AIzaSyD-B2y4CXtgVN_E...
+2026-03-10 14:59:24,218 - INFO -  Loaded API key 5: AIzaSyCD7VAuRlAS06cv...
+2026-03-10 14:59:24,218 - INFO -  Loaded API key 3: AIzaSyACv5x8_rNNbLlB...
+2026-03-10 14:59:24,219 - INFO -  Loaded API key 4: AIzaSyD-B2y4CXtgVN_E...
+2026-03-10 14:59:24,219 - INFO -  API Key Manager initialized with 4 keys
+2026-03-10 14:59:24,219 - INFO -  Loaded API key 5: AIzaSyCD7VAuRlAS06cv...
+2026-03-10 14:59:24,219 - INFO -  API Key Manager initialized with 4 keys
+2026-03-10 14:59:30,925 - WARNING -  Static directory not found: E:\HOCKI6\PBL5\AI\static
+2026-03-10 14:59:30,925 - WARNING -  Static directory not found: E:\HOCKI6\PBL5\AI\static
+2026-03-10 14:59:30,925 - INFO -  Error handlers setup complete
+2026-03-10 14:59:30,925 - INFO -  Error handlers setup complete
+2026-03-10 14:59:30,926 - INFO -  Error handlers setup complete
+2026-03-10 14:59:30,926 - INFO -  Error handlers setup complete
+2026-03-10 14:59:30,929 - INFO -  Server started - job preload running in background
+2026-03-10 14:59:30,929 - INFO -  Server started - job preload running in background
+2026-03-10 14:59:30,929 - INFO - Background: Attempting to preload jobs from PostgreSQL...
+2026-03-10 14:59:30,929 - INFO - Background: Attempting to preload jobs from PostgreSQL...
+2026-03-10 14:59:31,939 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-03-10 14:59:32,612 - INFO -  Initialized Chroma vectorstore for 'jobs' with Google Gemini Embedding API
+2026-03-10 14:59:32,614 - INFO -  Initialized Chroma vectorstore for 'jobs' with Google Gemini Embedding API
+2026-03-10 14:59:33,001 - INFO -  Skipping PG preload: jobs collection already has 280 documents
+2026-03-10 14:59:33,002 - INFO -  Skipping PG preload: jobs collection already has 280 documents
+2026-03-10 14:59:33,006 - INFO -  Background preload from PostgreSQL completed successfully
+2026-03-10 15:11:59,432 - INFO -  Loaded API key 2: AIzaSyBQnvMAHvy7V5uQ...
+2026-03-10 15:11:59,434 - INFO -  Loaded API key 3: AIzaSyACv5x8_rNNbLlB...
+2026-03-10 15:11:59,435 - INFO -  Loaded API key 3: AIzaSyACv5x8_rNNbLlB...
+2026-03-10 15:11:59,436 - INFO -  Loaded API key 4: AIzaSyD-B2y4CXtgVN_E...
+2026-03-10 15:11:59,436 - INFO -  Loaded API key 4: AIzaSyD-B2y4CXtgVN_E...
+2026-03-10 15:11:59,436 - INFO -  Loaded API key 5: AIzaSyCD7VAuRlAS06cv...
+2026-03-10 15:11:59,437 - INFO -  API Key Manager initialized with 4 keys
+2026-03-10 15:11:59,438 - INFO -  Loaded API key 5: AIzaSyCD7VAuRlAS06cv...
+2026-03-10 15:11:59,438 - INFO -  API Key Manager initialized with 4 keys
+2026-03-10 15:12:12,739 - WARNING -  Static directory not found: E:\HOCKI6\PBL5\AI\static
+2026-03-10 15:12:12,739 - WARNING -  Static directory not found: E:\HOCKI6\PBL5\AI\static
+2026-03-10 15:12:12,739 - INFO -  Error handlers setup complete
+2026-03-10 15:12:12,742 - INFO -  Error handlers setup complete
+2026-03-10 15:12:12,743 - INFO -  Error handlers setup complete
+2026-03-10 15:12:12,745 - INFO -  Error handlers setup complete
+2026-03-10 15:12:12,755 - INFO -  Server started - job preload running in background
+2026-03-10 15:12:12,755 - INFO - Background: Attempting to preload jobs from PostgreSQL...
+2026-03-10 15:12:12,758 - INFO - Background: Attempting to preload jobs from PostgreSQL...
+2026-03-10 15:12:14,692 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-03-10 15:12:14,692 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-03-10 15:12:15,307 - INFO -  Initialized Chroma vectorstore for 'jobs' with Google Gemini Embedding API
+2026-03-10 15:12:15,312 - INFO -  Initialized Chroma vectorstore for 'jobs' with Google Gemini Embedding API
+2026-03-10 15:12:15,761 - INFO -  Skipping PG preload: jobs collection already has 280 documents
+2026-03-10 15:12:15,769 - INFO -  Skipping PG preload: jobs collection already has 280 documents
+2026-03-10 15:13:07,234 - INFO -  Loaded API key 2: AIzaSyBQnvMAHvy7V5uQ...
+2026-03-10 15:13:07,237 - INFO -  Loaded API key 3: AIzaSyACv5x8_rNNbLlB...
+2026-03-10 15:13:07,238 - INFO -  Loaded API key 4: AIzaSyD-B2y4CXtgVN_E...
+2026-03-10 15:13:07,238 - INFO -  Loaded API key 3: AIzaSyACv5x8_rNNbLlB...
+2026-03-10 15:13:07,239 - INFO -  API Key Manager initialized with 4 keys
+2026-03-10 15:13:07,239 - INFO -  Loaded API key 4: AIzaSyD-B2y4CXtgVN_E...
+2026-03-10 15:13:07,244 - INFO -  Loaded API key 5: AIzaSyCD7VAuRlAS06cv...
+2026-03-10 15:13:07,247 - INFO -  API Key Manager initialized with 4 keys
+2026-03-10 15:13:18,123 - WARNING -  Static directory not found: E:\HOCKI6\PBL5\AI\static
+2026-03-10 15:13:18,123 - WARNING -  Static directory not found: E:\HOCKI6\PBL5\AI\static
+2026-03-10 15:13:18,124 - INFO -  Error handlers setup complete
+2026-03-10 15:13:18,124 - INFO -  Error handlers setup complete
+2026-03-10 15:13:18,124 - INFO -  Error handlers setup complete
+2026-03-10 15:13:18,124 - INFO -  Error handlers setup complete
+2026-03-10 15:13:18,131 - INFO -  Server started - job preload running in background
+2026-03-10 15:13:18,131 - INFO -  Server started - job preload running in background
+2026-03-10 15:13:18,131 - INFO - Background: Attempting to preload jobs from PostgreSQL...
+2026-03-10 15:13:18,131 - INFO - Background: Attempting to preload jobs from PostgreSQL...
+2026-03-10 15:13:20,265 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-03-10 15:13:20,761 - INFO -  Initialized Chroma vectorstore for 'jobs' with Google Gemini Embedding API
+2026-03-10 15:13:20,774 - INFO -  Initialized Chroma vectorstore for 'jobs' with Google Gemini Embedding API
+2026-03-10 15:13:21,123 - INFO -  Skipping PG preload: jobs collection already has 280 documents
+2026-03-10 15:13:21,125 - INFO -  Skipping PG preload: jobs collection already has 280 documents
+2026-03-10 15:14:24,493 - INFO -  Loaded API key 2: AIzaSyBQnvMAHvy7V5uQ...
+2026-03-10 15:14:24,495 - INFO -  Loaded API key 3: AIzaSyACv5x8_rNNbLlB...
+2026-03-10 15:14:24,495 - INFO -  Loaded API key 3: AIzaSyACv5x8_rNNbLlB...
+2026-03-10 15:14:24,495 - INFO -  Loaded API key 4: AIzaSyD-B2y4CXtgVN_E...
+2026-03-10 15:14:24,495 - INFO -  Loaded API key 4: AIzaSyD-B2y4CXtgVN_E...
+2026-03-10 15:14:24,495 - INFO -  Loaded API key 5: AIzaSyCD7VAuRlAS06cv...
+2026-03-10 15:14:24,495 - INFO -  Loaded API key 5: AIzaSyCD7VAuRlAS06cv...
+2026-03-10 15:14:24,495 - INFO -  API Key Manager initialized with 4 keys
+2026-03-10 15:14:24,496 - INFO -  API Key Manager initialized with 4 keys
+2026-03-10 15:14:36,608 - WARNING -  Static directory not found: E:\HOCKI6\PBL5\AI\static
+2026-03-10 15:14:36,608 - WARNING -  Static directory not found: E:\HOCKI6\PBL5\AI\static
+2026-03-10 15:14:36,610 - INFO -  Error handlers setup complete
+2026-03-10 15:14:36,610 - INFO -  Error handlers setup complete
+2026-03-10 15:14:36,612 - INFO -  Error handlers setup complete
+2026-03-10 15:14:36,613 - INFO -  Error handlers setup complete
+2026-03-10 15:14:36,621 - INFO -  Server started - job preload running in background
+2026-03-10 15:14:36,621 - INFO -  Server started - job preload running in background
+2026-03-10 15:14:36,621 - INFO - Background: Attempting to preload jobs from PostgreSQL...
+2026-03-10 15:14:36,621 - INFO - Background: Attempting to preload jobs from PostgreSQL...
+2026-03-10 15:14:38,558 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-03-10 15:14:39,090 - INFO -  Initialized Chroma vectorstore for 'jobs' with Google Gemini Embedding API
+2026-03-10 15:14:39,514 - INFO -  Skipping PG preload: jobs collection already has 280 documents
+2026-03-10 15:14:39,521 - INFO -  Skipping PG preload: jobs collection already has 280 documents
+2026-03-10 15:15:27,138 - INFO -  Loaded API key 2: AIzaSyBQnvMAHvy7V5uQ...
+2026-03-10 15:15:27,140 - INFO -  Loaded API key 3: AIzaSyACv5x8_rNNbLlB...
+2026-03-10 15:15:27,140 - INFO -  Loaded API key 3: AIzaSyACv5x8_rNNbLlB...
+2026-03-10 15:15:27,141 - INFO -  Loaded API key 4: AIzaSyD-B2y4CXtgVN_E...
+2026-03-10 15:15:27,141 - INFO -  Loaded API key 5: AIzaSyCD7VAuRlAS06cv...
+2026-03-10 15:15:27,141 - INFO -  Loaded API key 4: AIzaSyD-B2y4CXtgVN_E...
+2026-03-10 15:15:27,142 - INFO -  API Key Manager initialized with 4 keys
+2026-03-10 15:15:27,144 - INFO -  Loaded API key 5: AIzaSyCD7VAuRlAS06cv...
+2026-03-10 15:15:27,144 - INFO -  API Key Manager initialized with 4 keys
+2026-03-10 15:15:35,478 - WARNING -  Static directory not found: E:\HOCKI6\PBL5\AI\static
+2026-03-10 15:15:35,479 - INFO -  Error handlers setup complete
+2026-03-10 15:15:35,479 - INFO -  Error handlers setup complete
+2026-03-10 15:15:35,480 - WARNING -  Static directory not found: E:\HOCKI6\PBL5\AI\static
+2026-03-10 15:15:35,480 - INFO -  Error handlers setup complete
+2026-03-10 15:15:35,480 - INFO -  Error handlers setup complete
+2026-03-10 15:15:35,481 - INFO -  Server started - job preload running in background
+2026-03-10 15:15:35,482 - INFO - Background: Attempting to preload jobs from PostgreSQL...
+2026-03-10 15:15:35,482 - INFO -  Server started - job preload running in background
+2026-03-10 15:15:35,483 - INFO - Background: Attempting to preload jobs from PostgreSQL...
+2026-03-10 15:15:36,734 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-03-10 15:15:36,735 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-03-10 15:15:37,024 - INFO -  Initialized Chroma vectorstore for 'jobs' with Google Gemini Embedding API
+2026-03-10 15:15:37,024 - INFO -  Initialized Chroma vectorstore for 'jobs' with Google Gemini Embedding API
+2026-03-10 15:15:37,345 - INFO -  Skipping PG preload: jobs collection already has 280 documents
+2026-03-10 15:15:37,355 - INFO -  Background preload from PostgreSQL completed successfully
+2026-03-10 15:15:37,382 - INFO -  Skipping PG preload: jobs collection already has 280 documents
+2026-03-10 15:15:37,384 - INFO -  Background preload from PostgreSQL completed successfully
+2026-03-10 15:18:31,882 - INFO -  Loaded API key 2: AIzaSyBQnvMAHvy7V5uQ...
+2026-03-10 15:18:31,884 - INFO -  Loaded API key 3: AIzaSyACv5x8_rNNbLlB...
+2026-03-10 15:18:31,885 - INFO -  Loaded API key 4: AIzaSyD-B2y4CXtgVN_E...
+2026-03-10 15:18:31,886 - INFO -  Loaded API key 5: AIzaSyCD7VAuRlAS06cv...
+2026-03-10 15:18:31,886 - INFO -  API Key Manager initialized with 4 keys
+2026-03-10 15:18:46,270 - WARNING -  Static directory not found: E:\HOCKI6\PBL5\AI\static
+2026-03-10 15:18:46,271 - INFO -  Error handlers setup complete
+2026-03-10 15:18:46,271 - INFO -  Error handlers setup complete
+2026-03-10 15:18:46,279 - INFO -  Server started - job preload running in background
+2026-03-10 15:18:46,280 - INFO - Background: Attempting to preload jobs from PostgreSQL...
+2026-03-10 15:18:49,237 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-03-10 15:18:49,843 - INFO -  Initialized Chroma vectorstore for 'jobs' with Google Gemini Embedding API
+2026-03-10 15:18:50,129 - INFO -  Skipping PG preload: jobs collection already has 280 documents
+2026-03-10 15:19:41,827 - INFO -  Initialized gemini-2.5-flash with temperature=0.7
+2026-03-10 15:19:41,841 - INFO -  ChatbotRAG initialized (collection=jobs)
+2026-03-10 15:20:30,857 - INFO -  Intent detected (keyword): jobs
+2026-03-10 15:20:30,858 - INFO -  Conversation 121924ce-c39e-43fd-ba96-48c086366b48 intent: jobs
+2026-03-10 15:20:30,861 - INFO -  Hybrid search: query=Tim viec Python..., filters={}
+2026-03-10 15:20:31,752 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:batchEmbedContents "HTTP/1.1 200 OK"
+2026-03-10 15:20:32,102 - INFO -  Hybrid search returned 5 docs
+2026-03-10 15:20:32,249 - INFO - AFC is enabled with max remote calls: 10.
+2026-03-10 15:20:43,894 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-10 15:20:43,923 - INFO -  Conversation response generated (2028 chars)
+2026-03-10 15:23:12,253 - INFO -  Loaded API key 2: AIzaSyBQnvMAHvy7V5uQ...
+2026-03-10 15:23:12,255 - INFO -  Loaded API key 3: AIzaSyACv5x8_rNNbLlB...
+2026-03-10 15:23:12,255 - INFO -  Loaded API key 3: AIzaSyACv5x8_rNNbLlB...
+2026-03-10 15:23:12,255 - INFO -  Loaded API key 4: AIzaSyD-B2y4CXtgVN_E...
+2026-03-10 15:23:12,255 - INFO -  Loaded API key 4: AIzaSyD-B2y4CXtgVN_E...
+2026-03-10 15:23:12,256 - INFO -  Loaded API key 5: AIzaSyCD7VAuRlAS06cv...
+2026-03-10 15:23:12,256 - INFO -  Loaded API key 5: AIzaSyCD7VAuRlAS06cv...
+2026-03-10 15:23:12,256 - INFO -  API Key Manager initialized with 4 keys
+2026-03-10 15:23:12,256 - INFO -  API Key Manager initialized with 4 keys
+2026-03-10 15:23:18,866 - WARNING -  Static directory not found: E:\HOCKI6\PBL5\AI\static
+2026-03-10 15:23:18,866 - INFO -  Error handlers setup complete
+2026-03-10 15:23:18,867 - INFO -  Error handlers setup complete
+2026-03-10 15:23:18,869 - WARNING -  Static directory not found: E:\HOCKI6\PBL5\AI\static
+2026-03-10 15:23:18,870 - INFO -  Server started - job preload running in background
+2026-03-10 15:23:18,871 - INFO - Background: Attempting to preload jobs from PostgreSQL...
+2026-03-10 15:23:18,871 - INFO -  Error handlers setup complete
+2026-03-10 15:23:18,872 - INFO -  Error handlers setup complete
+2026-03-10 15:23:18,874 - INFO -  Server started - job preload running in background
+2026-03-10 15:23:18,875 - INFO - Background: Attempting to preload jobs from PostgreSQL...
+2026-03-10 15:23:20,119 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-03-10 15:23:20,119 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-03-10 15:23:20,487 - INFO -  Initialized Chroma vectorstore for 'jobs' with Google Gemini Embedding API
+2026-03-10 15:23:20,496 - INFO -  Initialized Chroma vectorstore for 'jobs' with Google Gemini Embedding API
+2026-03-10 15:23:20,857 - INFO -  Skipping PG preload: jobs collection already has 280 documents
+2026-03-10 15:23:20,859 - INFO -  Skipping PG preload: jobs collection already has 280 documents
+2026-03-10 15:24:01,893 - INFO -  Loaded API key 2: AIzaSyBQnvMAHvy7V5uQ...
+2026-03-10 15:24:01,897 - INFO -  Loaded API key 3: AIzaSyACv5x8_rNNbLlB...
+2026-03-10 15:24:01,897 - INFO -  Loaded API key 4: AIzaSyD-B2y4CXtgVN_E...
+2026-03-10 15:24:01,897 - INFO -  Loaded API key 4: AIzaSyD-B2y4CXtgVN_E...
+2026-03-10 15:24:01,897 - INFO -  Loaded API key 5: AIzaSyCD7VAuRlAS06cv...
+2026-03-10 15:24:01,899 - INFO -  API Key Manager initialized with 4 keys
+2026-03-10 15:24:08,523 - WARNING -  Static directory not found: E:\HOCKI6\PBL5\AI\static
+2026-03-10 15:24:08,523 - INFO -  Error handlers setup complete
+2026-03-10 15:24:08,527 - INFO -  Error handlers setup complete
+2026-03-10 15:24:08,531 - INFO -  Server started - job preload running in background
+2026-03-10 15:24:08,531 - INFO - Background: Attempting to preload jobs from PostgreSQL...
+2026-03-10 15:24:08,532 - WARNING -  Static directory not found: E:\HOCKI6\PBL5\AI\static
+2026-03-10 15:24:08,532 - INFO -  Error handlers setup complete
+2026-03-10 15:24:08,532 - INFO -  Error handlers setup complete
+2026-03-10 15:24:08,534 - INFO -  Server started - job preload running in background
+2026-03-10 15:24:08,535 - INFO - Background: Attempting to preload jobs from PostgreSQL...
+2026-03-10 15:24:09,616 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-03-10 15:24:09,616 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-03-10 15:24:10,020 - INFO -  Initialized Chroma vectorstore for 'jobs' with Google Gemini Embedding API
+2026-03-10 15:24:10,021 - INFO -  Initialized Chroma vectorstore for 'jobs' with Google Gemini Embedding API
+2026-03-10 15:24:10,224 - INFO -  Skipping PG preload: jobs collection already has 280 documents
+2026-03-10 15:24:10,228 - INFO -  Background preload from PostgreSQL completed successfully
+2026-03-10 15:24:10,229 - INFO -  Skipping PG preload: jobs collection already has 280 documents
+2026-03-10 15:24:10,230 - INFO -  Background preload from PostgreSQL completed successfully

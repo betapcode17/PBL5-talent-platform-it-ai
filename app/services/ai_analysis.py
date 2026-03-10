@@ -13,10 +13,10 @@ from prompts import cv_analysis_prompt, cv_improvement_prompt  # Import prompts
 def get_llm():
     """
     Get LLM instance with rotated API key
-    Uses gemini-2.0-flash-lite (lightest model, separate quota)
+    Uses gemini-2.5-flash (stable model with available quota)
     """
     return ChatGoogleGenerativeAI(
-        model="gemini-2.0-flash-lite",
+        model="gemini-2.5-flash",
         google_api_key=get_next_api_key(),
         temperature=0.3
     )

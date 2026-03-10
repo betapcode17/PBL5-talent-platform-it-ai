@@ -55,7 +55,7 @@ class RetrievalService:
                 for doc, score in results:
                     retrieved_docs.append(
                         RetrievedDocument(
-                            id=doc.metadata.get("job_id", "unknown"),
+                            id=str(doc.metadata.get("job_id", "unknown")),
                             content=doc.page_content,
                             metadata=doc.metadata or {},
                             distance=score
@@ -108,7 +108,7 @@ class RetrievalService:
             for doc_id, metadata in zip(docs.get('ids', []), docs.get('metadatas', [])):
                 retrieved_docs.append(
                     RetrievedDocument(
-                        id=doc_id,
+                        id=str(doc_id),
                         content=metadata.get('content', ''),
                         metadata=metadata,
                         distance=None
@@ -206,6 +206,169 @@ Chi tiết:
             logger.error(f" Similar jobs search failed: {e}")
             return []
     
+    def hybrid_search(
+        self,
+        query: str,
+        filters: Optional[Dict[str, Any]] = None,
+        k: Optional[int] = None
+    ) -> List[RetrievedDocument]:
+        """
+        Hybrid search: semantic similarity + ChromaDB metadata filters.
+        
+        Args:
+            query: Search text for semantic matching
+            filters: Dict of metadata filters, e.g. {"work_type": "remote"}
+            k: Number of results
+        """
+        import time
+        k = k or self.k
+        logger.info(f" Hybrid search: query={query[:50]}..., filters={filters}")
+
+        # Build ChromaDB where clause from filters
+        where = None
+        if filters:
+            conditions = []
+            for key, value in filters.items():
+                if value:
+                    conditions.append({key: value})
+            if len(conditions) == 1:
+                where = conditions[0]
+            elif len(conditions) > 1:
+                where = {"$and": conditions}
+
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                results = self.vectorstore.similarity_search_with_relevance_scores(
+                    query, k=k, filter=where
+                )
+
+                retrieved_docs = []
+                for doc, score in results:
+                    retrieved_docs.append(
+                        RetrievedDocument(
+                            id=str(doc.metadata.get("job_id", "unknown")),
+                            content=doc.page_content,
+                            metadata=doc.metadata or {},
+                            distance=score
+                        )
+                    )
+
+                logger.info(f" Hybrid search returned {len(retrieved_docs)} docs")
+                return retrieved_docs
+
+            except Exception as e:
+                err_str = str(e)
+                if ("429" in err_str or "RESOURCE_EXHAUSTED" in err_str) and attempt < max_retries - 1:
+                    wait = 20 * (attempt + 1)
+                    logger.warning(f" Rate limited (attempt {attempt+1}), retrying in {wait}s...")
+                    time.sleep(wait)
+                    continue
+                # If filter caused the error, retry without filter
+                if where and attempt == 0:
+                    logger.warning(f" Hybrid search with filter failed, retrying without filter: {e}")
+                    where = None
+                    continue
+                logger.error(f" Hybrid search failed: {e}")
+                return []
+
+        return []
+
+    def get_collection_stats(self) -> Dict[str, Any]:
+        """
+        Compute aggregate stats from ChromaDB metadata.
+        Replaces PostgreSQL get_job_stats() for chat context.
+        """
+        from collections import Counter
+        try:
+            all_data = self.vectorstore._collection.get(
+                include=["metadatas"],
+                limit=10000
+            )
+            metadatas = all_data.get("metadatas") or []
+            total = len(metadatas)
+
+            companies = set()
+            skill_counter: Counter = Counter()
+            cat_counter: Counter = Counter()
+            location_counter: Counter = Counter()
+            work_type_counter: Counter = Counter()
+
+            for m in metadatas:
+                if not m:
+                    continue
+                company = m.get("company", "")
+                if company:
+                    companies.add(company)
+
+                skills_val = m.get("skills", "")
+                for s in str(skills_val).split(","):
+                    s = s.strip()
+                    if s:
+                        skill_counter[s] += 1
+
+                cat = m.get("category", "")
+                if cat:
+                    cat_counter[cat] += 1
+
+                loc = m.get("company_city", "") or m.get("location", "")
+                if loc:
+                    location_counter[loc] += 1
+
+                wt = m.get("work_type", "")
+                if wt:
+                    work_type_counter[wt] += 1
+
+            return {
+                "total_jobs": total,
+                "total_companies": len(companies),
+                "top_categories": [{"name": n, "count": c} for n, c in cat_counter.most_common(10)],
+                "top_skills": [{"name": n, "count": c} for n, c in skill_counter.most_common(10)],
+                "top_locations": [{"name": n, "count": c} for n, c in location_counter.most_common(10)],
+                "work_type_dist": [{"name": n, "count": c} for n, c in work_type_counter.most_common()],
+            }
+
+        except Exception as e:
+            logger.error(f" Collection stats failed: {e}")
+            return {"total_jobs": 0, "total_companies": 0, "top_categories": [], "top_skills": []}
+
+    def aggregate_search(
+        self,
+        text_contains: Optional[str] = None,
+        metadata_filter: Optional[Dict[str, Any]] = None,
+        limit: int = 5000
+    ) -> Dict[str, Any]:
+        """
+        Get matching documents for aggregation (counting, grouping).
+        Uses ChromaDB get() instead of similarity search (no embedding needed).
+        """
+        try:
+            kwargs: Dict[str, Any] = {"include": ["metadatas"], "limit": limit}
+
+            if metadata_filter:
+                conditions = []
+                for key, value in metadata_filter.items():
+                    if value:
+                        conditions.append({key: value})
+                if len(conditions) == 1:
+                    kwargs["where"] = conditions[0]
+                elif len(conditions) > 1:
+                    kwargs["where"] = {"$and": conditions}
+
+            if text_contains:
+                kwargs["where_document"] = {"$contains": text_contains}
+
+            results = self.vectorstore._collection.get(**kwargs)
+
+            return {
+                "count": len(results.get("ids", [])),
+                "metadatas": results.get("metadatas", []),
+                "ids": results.get("ids", [])
+            }
+        except Exception as e:
+            logger.error(f" Aggregate search failed: {e}")
+            return {"count": 0, "metadatas": [], "ids": []}
+
     def change_collection(self, collection_name: str):
         """Switch to different ChromaDB collection"""
         self.collection_name = collection_name

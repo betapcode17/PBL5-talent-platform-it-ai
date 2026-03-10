@@ -282,26 +282,47 @@ def preload_jobs_from_pg(batch_size: int = 20, force: bool = False) -> bool:
         documents: List[Document] = []
         for job in jobs:
             skills_list = job.get("skills", [])
+            company_name = str(job.get("company_name", "") or job.get("company_short_name", ""))
             page_content = (
                 f"JOB_ID: {job['job_id']}\n"
-                f"{job.get('job_title', '')} "
-                f"{job.get('job_description', '') or ''} "
-                f"{job.get('candidate_requirements', '') or ''} "
-                f"{json.dumps(skills_list, ensure_ascii=False)}"
+                f"Vi tri: {job.get('job_title', '')} tai {company_name}\n"
+                f"Mo ta: {(job.get('job_description', '') or '')[:300]}\n"
+                f"Yeu cau: {(job.get('candidate_requirements', '') or '')[:200]}\n"
+                f"Ky nang: {json.dumps(skills_list, ensure_ascii=False)}\n"
+                f"Dia diem: {job.get('work_location', '')}\n"
+                f"Luong: {job.get('salary', '')}\n"
+                f"Kinh nghiem: {job.get('experience', '')}\n"
+                f"Hinh thuc: {job.get('work_type', '')} {job.get('job_type_name', '')}\n"
+                f"Nganh: {job.get('category_name', '')}\n"
+                f"Cap bac: {job.get('level', '')}"
             )
             metadata = {
                 "job_id": job["job_id"],
                 "job_title": str(job.get("job_title", "")),
-                "company": str(job.get("company_name", "") or job.get("company_short_name", "")),
-                "location": str(job.get("work_location", "")),
-                "salary": str(job.get("salary", "")),
-                "experience": str(job.get("experience", "")),
-                "education": str(job.get("education", "")),
-                "work_type": str(job.get("work_type", "")),
-                "category": str(job.get("category_name", "")),
-                "skills": str(job.get("skills_text", "")),
-                "url": str(job.get("job_url", "")),
+                "company": company_name,
+                "location": str(job.get("work_location", "") or ""),
+                "salary": str(job.get("salary", "") or ""),
+                "experience": str(job.get("experience", "") or ""),
+                "education": str(job.get("education", "") or ""),
+                "work_type": str(job.get("work_type", "") or ""),
+                "category": str(job.get("category_name", "") or ""),
+                "skills": str(job.get("skills_text", "") or ""),
+                "url": str(job.get("job_url", "") or ""),
                 "num_positions": int(job.get("number_of_hires", 1) or 1),
+                # Enriched fields from PostgreSQL
+                "benefits": str(job.get("benefits", "") or ""),
+                "level": str(job.get("level", "") or ""),
+                "deadline": str(job.get("deadline", "") or ""),
+                "work_time": str(job.get("work_time", "") or ""),
+                "job_type": str(job.get("job_type_name", "") or ""),
+                "company_size": str(job.get("company_size", "") or ""),
+                "company_industry": str(job.get("company_industry", "") or ""),
+                "company_city": str(job.get("company_city", "") or ""),
+                "company_website": str(job.get("company_website_url", "") or ""),
+                "company_image": str(job.get("company_image", "") or ""),
+                "created_date": str(job.get("created_date", "") or ""),
+                "job_description": str(job.get("job_description", "") or "")[:500],
+                "candidate_requirements": str(job.get("candidate_requirements", "") or "")[:500],
             }
             documents.append(Document(page_content=page_content, metadata=metadata))
 

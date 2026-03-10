@@ -11,10 +11,8 @@ from typing import Optional, List, Dict, Any
 
 from services.llm_service import get_llm_service
 from services.retrieval_service import get_retrieval_service
-from services.pg_database import get_job_stats, get_job_by_id, execute_safe_sql
 from models.chat import ChatResponse, ChatHistoryItem, ChatRole, RAGContext
 from prompts.chat_system_prompt import CHAT_SYSTEM_PROMPTS
-from prompts.sql_prompt import SQL_SYSTEM_PROMPT, SQL_RESULT_PROMPT
 
 logger = logging.getLogger(__name__)
 
@@ -95,8 +93,8 @@ class ChatbotRAG:
         return False
     def _retrieve_context(self, query: str) -> tuple[str, List[Dict[str, Any]]]:
         """
-        Retrieve context documents from RAG (ChromaDB) + keyword search (PostgreSQL).
-        Hybrid approach: semantic + keyword, merged and deduplicated.
+        Retrieve context from ChromaDB using hybrid search.
+        Uses enriched metadata directly — no PostgreSQL enrichment needed.
         """
         if not self.enable_rag:
             return "", []
@@ -104,72 +102,46 @@ class ChatbotRAG:
         try:
             context_parts = []
             sources = []
-            seen_job_ids = set()
 
-            # Semantic search from ChromaDB (vector search)
+            # Extract keyword-based filters
+            filters = self._extract_filters(query)
+
+            # Hybrid search: semantic + metadata filters
             try:
-                doc_results = self.retrieval_service.retrieve(
+                doc_results = self.retrieval_service.hybrid_search(
                     query,
+                    filters=filters,
                     k=self.k_documents
                 )
                 for doc in doc_results:
-                    job_id = doc.metadata.get('job_id')
-
-                    if job_id and str(job_id).isdigit() and int(job_id) in seen_job_ids:
-                        continue
-
-                    pg_job = None
-                    if job_id and str(job_id).isdigit():
-                        seen_job_ids.add(int(job_id))
-                        try:
-                            pg_job = get_job_by_id(int(job_id))
-                        except Exception:
-                            pass
-
-                    if pg_job:
-                        context_parts.append(
-                            f"Viec lam: {pg_job.get('job_title', 'N/A')}\n"
-                            f"  Cong ty: {pg_job.get('company_name', 'N/A')}\n"
-                            f"  Dia diem: {pg_job.get('work_location', 'N/A')}\n"
-                            f"  Luong: {pg_job.get('salary', 'Thuong luong')}\n"
-                            f"  Kinh nghiem: {pg_job.get('experience', 'N/A')}\n"
-                            f"  Ky nang: {pg_job.get('skills_text', 'N/A')}\n"
-                            f"  URL: {pg_job.get('job_url', 'N/A')}\n"
-                        )
-                        sources.append({
-                            "id": str(job_id),
-                            "title": pg_job.get('job_title'),
-                            "company": pg_job.get('company_name'),
-                            "location": pg_job.get('work_location'),
-                            "salary": pg_job.get('salary'),
-                            "url": pg_job.get('job_url'),
-                            "similarity": doc.distance
-                        })
-                    else:
-                        context_parts.append(
-                            f"Viec lam: {doc.metadata.get('job_title', 'N/A')}\n"
-                            f"  Cong ty: {doc.metadata.get('company', 'N/A')}\n"
-                            f"  Dia diem: {doc.metadata.get('location', 'N/A')}\n"
-                            f"  Luong: {doc.metadata.get('salary', 'N/A')}\n"
-                            f"  Ky nang: {doc.metadata.get('skills', 'N/A')}\n"
-                            f"  URL: {doc.metadata.get('url', 'N/A')}\n"
-                        )
-                        sources.append({
-                            "id": doc.id,
-                            "title": doc.metadata.get('job_title'),
-                            "company": doc.metadata.get('company'),
-                            "location": doc.metadata.get('location'),
-                            "salary": doc.metadata.get('salary'),
-                            "url": doc.metadata.get('url'),
-                            "similarity": doc.distance
-                        })
+                    m = doc.metadata
+                    context_parts.append(
+                        f"Viec lam: {m.get('job_title', 'N/A')}\n"
+                        f"  Cong ty: {m.get('company', 'N/A')}\n"
+                        f"  Dia diem: {m.get('location', 'N/A')}\n"
+                        f"  Luong: {m.get('salary', 'Thuong luong')}\n"
+                        f"  Kinh nghiem: {m.get('experience', 'N/A')}\n"
+                        f"  Ky nang: {m.get('skills', 'N/A')}\n"
+                        f"  Hinh thuc: {m.get('work_type', 'N/A')} - {m.get('job_type', 'N/A')}\n"
+                        f"  Cap bac: {m.get('level', 'N/A')}\n"
+                        f"  URL: {m.get('url', 'N/A')}\n"
+                    )
+                    sources.append({
+                        "id": doc.id,
+                        "title": m.get('job_title'),
+                        "company": m.get('company'),
+                        "location": m.get('location'),
+                        "salary": m.get('salary'),
+                        "url": m.get('url'),
+                        "similarity": doc.distance
+                    })
             except Exception as e:
-                logger.warning(f"Semantic search failed: {e}")
+                logger.warning(f"Hybrid search failed: {e}")
 
-            # 3) Only add stats if no actual jobs found
+            # If no results, add market stats from ChromaDB
             if not sources:
                 try:
-                    stats = get_job_stats()
+                    stats = self.retrieval_service.get_collection_stats()
                     context_parts.append(
                         f"Thong ke thi truong:\n"
                         f"  Tong viec lam dang tuyen: {stats.get('total_jobs', 'N/A')}\n"
@@ -186,6 +158,117 @@ class ChatbotRAG:
         except Exception as e:
             logger.error(f"Context retrieval failed: {e}")
             return "", []
+
+    def _extract_filters(self, message: str) -> Dict[str, Any]:
+        """Extract metadata filters from message using keyword matching (no LLM call)."""
+        msg = message.lower()
+        filters: Dict[str, Any] = {}
+
+        # Work type
+        if "remote" in msg:
+            filters["work_type"] = "remote"
+        elif any(kw in msg for kw in ["onsite", "on-site", "tai van phong", "tại văn phòng"]):
+            filters["work_type"] = "at_office"
+        elif "hybrid" in msg:
+            filters["work_type"] = "hybrid"
+
+        # Job type
+        if any(kw in msg for kw in ["full-time", "fulltime", "toàn thời gian", "toan thoi gian"]):
+            filters["job_type"] = "Full-time"
+        elif any(kw in msg for kw in ["part-time", "parttime", "bán thời gian", "ban thoi gian"]):
+            filters["job_type"] = "Part-time"
+        elif any(kw in msg for kw in ["intern", "thực tập", "thuc tap", "internship"]):
+            filters["job_type"] = "Internship"
+
+        return filters
+
+    _AGGREGATE_KEYWORDS = [
+        "bao nhiêu", "bao nhieu", "có bao nhiêu", "co bao nhieu",
+        "thống kê", "thong ke", "top ", "xếp hạng", "xep hang",
+        "nhiều nhất", "nhieu nhat", "ít nhất", "it nhat",
+        "đếm", "dem", "count", "phân bố", "phan bo",
+        "tỷ lệ", "ty le", "tổng cộng", "tong cong",
+        "cao nhất", "cao nhat", "thấp nhất", "thap nhat",
+        "phần trăm", "phan tram",
+    ]
+
+    def _is_aggregate_query(self, message: str) -> bool:
+        """Check if the message asks for counts / statistics / rankings."""
+        msg = message.lower()
+        return any(kw in msg for kw in self._AGGREGATE_KEYWORDS)
+
+    def _handle_aggregate(self, message: str) -> tuple[str, List[Dict[str, Any]]]:
+        """
+        Handle aggregate/statistical queries using ChromaDB metadata.
+        Returns (context_str, sources_list) for the LLM to format.
+        """
+        from collections import Counter
+
+        stats = self.retrieval_service.get_collection_stats()
+        total = stats.get("total_jobs", 0)
+        context_parts = [f"Tong so viec lam trong he thong: {total}"]
+        context_parts.append(f"So cong ty: {stats.get('total_companies', 0)}")
+        sources: List[Dict[str, Any]] = [{"type": "aggregate", "total_jobs": total}]
+
+        msg = message.lower()
+
+        # Top skills
+        if any(kw in msg for kw in ["kỹ năng", "ky nang", "skill"]):
+            context_parts.append("Top ky nang duoc yeu cau nhieu nhat:")
+            for s in stats.get("top_skills", [])[:10]:
+                context_parts.append(f"  - {s['name']}: {s['count']} viec lam")
+
+        # Top categories
+        elif any(kw in msg for kw in ["ngành", "nganh", "category", "lĩnh vực", "linh vuc"]):
+            context_parts.append("Phan bo theo nganh:")
+            for c in stats.get("top_categories", [])[:10]:
+                context_parts.append(f"  - {c['name']}: {c['count']} viec lam")
+
+        # Top companies
+        elif any(kw in msg for kw in ["công ty", "cong ty", "company"]):
+            all_data = self.retrieval_service.aggregate_search()
+            comp_counter: Counter = Counter(
+                m.get("company", "") for m in all_data.get("metadatas", []) if m.get("company")
+            )
+            context_parts.append("Top cong ty co nhieu viec lam:")
+            for comp, count in comp_counter.most_common(10):
+                context_parts.append(f"  - {comp}: {count} viec lam")
+
+        # Work type distribution
+        elif any(kw in msg for kw in ["remote", "onsite", "hybrid", "hình thức", "hinh thuc"]):
+            for wt in stats.get("work_type_dist", []):
+                context_parts.append(f"  - {wt['name']}: {wt['count']} viec lam")
+
+        # Location distribution
+        elif any(kw in msg for kw in ["thành phố", "thanh pho", "địa điểm", "dia diem", "location"]):
+            context_parts.append("Phan bo theo khu vuc:")
+            for loc in stats.get("top_locations", [])[:10]:
+                context_parts.append(f"  - {loc['name']}: {loc['count']} viec lam")
+
+        else:
+            # Generic overview
+            context_parts.append("Top nganh: " + ", ".join(
+                f"{c['name']}({c['count']})" for c in stats.get("top_categories", [])[:5]
+            ))
+            context_parts.append("Top ky nang: " + ", ".join(
+                f"{s['name']}({s['count']})" for s in stats.get("top_skills", [])[:5]
+            ))
+
+        # Also add a few sample jobs from semantic search for context
+        try:
+            sample_docs = self.retrieval_service.hybrid_search(message, k=3)
+            if sample_docs:
+                context_parts.append("\nMot so viec lam lien quan:")
+                for doc in sample_docs:
+                    m = doc.metadata
+                    context_parts.append(
+                        f"  - {m.get('job_title', 'N/A')} | {m.get('company', 'N/A')} | "
+                        f"{m.get('location', 'N/A')} | {m.get('salary', 'N/A')}"
+                    )
+        except Exception:
+            pass
+
+        return "\n".join(context_parts), sources
 
     # ----- Intent Detection -----
 
@@ -240,8 +323,7 @@ class ChatbotRAG:
             "intern", "fresher", "junior", "senior",
             "cần tuyển", "can tuyen",
             "tìm công việc", "tim cong viec",
-        ],
-        "sql": [
+            # Merged from SQL intent — aggregate/statistical queries
             "bao nhiêu", "bao nhieu",
             "có bao nhiêu", "co bao nhieu",
             "thống kê", "thong ke",
@@ -257,8 +339,7 @@ class ChatbotRAG:
             "cao nhất", "cao nhat",
             "thấp nhất", "thap nhat",
             "phần trăm", "phan tram",
-            "truy vấn", "truy van", "query",
-            "database", "dữ liệu", "du lieu",
+            "dữ liệu", "du lieu",
         ],
     }
 
@@ -271,8 +352,7 @@ class ChatbotRAG:
         msg = message.lower()
 
         # 1. Keyword-based (instant, free)
-        # matching checked before cv (more specific: cv + phu hop = matching)
-        for intent in ("matching", "cv", "career", "sql", "jobs"):
+        for intent in ("matching", "cv", "career", "jobs"):
             if any(kw in msg for kw in self._INTENT_KEYWORDS[intent]):
                 logger.info(f" Intent detected (keyword): {intent}")
                 return intent
@@ -293,109 +373,19 @@ class ChatbotRAG:
         """Use LLM to classify ambiguous messages into intent categories."""
         prompt = (
             "Phan loai tin nhan sau vao MOT trong cac loai:\n"
-            "- jobs: tim viec, hoi ve cong viec, goi y viec lam\n"
-            "- sql: hoi thong ke, so lieu, bao nhieu, top, xep hang, dem, phan bo\n"
+            "- jobs: tim viec, hoi ve cong viec, goi y viec lam, thong ke viec lam, bao nhieu, top, xep hang\n"
             "- cv: hoi ve CV, cai thien ho so, phan tich CV\n"
             "- matching: so khop CV voi viec, do phu hop\n"
             "- career: lo trinh nghe nghiep, phat trien ky nang, dinh huong\n"
             "- default: chao hoi, cau hoi chung\n\n"
             f'Tin nhan: "{message}"\n\n'
-            "Chi tra loi MOT tu: jobs, sql, cv, matching, career, hoac default"
+            "Chi tra loi MOT tu: jobs, cv, matching, career, hoac default"
         )
         result = self.llm_service.generate_response(
             prompt,
             system_prompt="You are a classifier. Reply with exactly one word."
         )
         return result.strip().lower().split()[0]
-
-    # ----- Text-to-SQL -----
-
-    def _generate_sql(self, user_message: str) -> str:
-        """Use LLM to generate a SQL query from the user's question."""
-        prompt = f'Cau hoi: "{user_message}"'
-        result = self.llm_service.generate_response(
-            prompt,
-            system_prompt=SQL_SYSTEM_PROMPT,
-            temperature=0.0
-        )
-        # Clean: strip markdown fences if the LLM wraps in ```sql ... ```
-        sql = result.strip()
-        if sql.startswith("```"):
-            lines = sql.split("\n")
-            lines = [l for l in lines if not l.strip().startswith("```")]
-            sql = "\n".join(lines).strip()
-        return sql
-
-    def _handle_sql_intent(self, user_message: str, conv_context: str) -> tuple:
-        """
-        Full Text-to-SQL pipeline:
-        1. Generate SQL from question
-        2. Execute safely
-        3. Format result with LLM
-        Returns: (bot_response, sources_list)
-        """
-        # Step 1: Generate SQL
-        sql = self._generate_sql(user_message)
-        logger.info(f" Generated SQL: {sql[:200]}")
-
-        if sql.upper().strip() == "NONE":
-            return None, []  # Not a DB question, fall back
-
-        # Step 2: Execute
-        result = execute_safe_sql(sql)
-
-        if result["error"]:
-            logger.warning(f" SQL error: {result['error']}")
-            # Try once more with the error context
-            retry_prompt = (
-                f'Cau hoi: "{user_message}"\n'
-                f'Lan truoc tao SQL bi loi: {result["error"]}\n'
-                f'SQL cu: {sql}\n'
-                f'Hay sua lai cho dung.'
-            )
-            sql = self.llm_service.generate_response(
-                retry_prompt,
-                system_prompt=SQL_SYSTEM_PROMPT,
-                temperature=0.0
-            ).strip()
-            if sql.startswith("```"):
-                lines = sql.split("\n")
-                lines = [l for l in lines if not l.strip().startswith("```")]
-                sql = "\n".join(lines).strip()
-            result = execute_safe_sql(sql)
-
-        if result["error"]:
-            return f"Khong the thuc hien truy van: {result['error']}", []
-
-        # Step 3: Format result with LLM
-        rows_text = ""
-        if result["rows"]:
-            # Build a readable table for the LLM
-            cols = result["columns"]
-            rows_text = " | ".join(cols) + "\n"
-            rows_text += "-" * 40 + "\n"
-            for row in result["rows"][:20]:
-                rows_text += " | ".join(str(row.get(c, "")) for c in cols) + "\n"
-
-        format_prompt = (
-            f"{conv_context}\n\n"
-            f"Cau hoi cua nguoi dung: {user_message}\n\n"
-            f"SQL da thuc hien:\n{sql}\n\n"
-            f"Ket qua ({result['row_count']} dong):\n{rows_text}\n\n"
-            f"Hay trinh bay ket qua mot cach de hieu cho nguoi dung."
-        )
-        bot_response = self.llm_service.generate_response(
-            format_prompt,
-            system_prompt=SQL_RESULT_PROMPT
-        )
-
-        sources = [{
-            "type": "sql_query",
-            "sql": sql,
-            "row_count": result["row_count"]
-        }]
-
-        return bot_response, sources
 
     def _build_system_prompt(self, context_type: str = "jobs") -> str:
         """Build system prompt for chat"""
@@ -458,11 +448,14 @@ class ChatbotRAG:
             context = ""
             sources = []
             if detected_intent == "jobs" and use_rag_this_time:
-                context, sources = self._retrieve_context(user_message)
+                if self._is_aggregate_query(user_message):
+                    context, sources = self._handle_aggregate(user_message)
+                else:
+                    context, sources = self._retrieve_context(user_message)
             elif detected_intent == "career" and use_rag_this_time:
-                # Career advice benefits from market stats
+                # Career advice benefits from market stats (from ChromaDB)
                 try:
-                    stats = get_job_stats()
+                    stats = self.retrieval_service.get_collection_stats()
                     top_skills = ', '.join(s['name'] for s in stats.get('top_skills', [])[:10])
                     top_cats = ', '.join(c['name'] for c in stats.get('top_categories', [])[:5])
                     context = (
@@ -478,39 +471,6 @@ class ChatbotRAG:
             # Build conversation context
             conv_context = self._build_conversation_context(session_id)
 
-            # --- SQL intent: Text-to-SQL pipeline ---
-            if detected_intent == "sql":
-                try:
-                    sql_response, sql_sources = self._handle_sql_intent(
-                        user_message, conv_context
-                    )
-                    if sql_response is not None:
-                        self.add_to_history(
-                            session_id,
-                            ChatRole.ASSISTANT,
-                            sql_response,
-                            sources=sql_sources if sql_sources else None
-                        )
-                        return ChatResponse(
-                            response=sql_response,
-                            session_id=session_id,
-                            sources=sql_sources,
-                            detected_intent="sql",
-                            confidence_score=None
-                        )
-                except Exception as e:
-                    logger.warning(f" SQL intent failed: {e}")
-                    fallback = "Xin loi, hien tai khong the xu ly truy van du lieu. Vui long thu lai sau."
-                    self.add_to_history(session_id, ChatRole.ASSISTANT, fallback)
-                    return ChatResponse(
-                        response=fallback,
-                        session_id=session_id,
-                        sources=[],
-                        detected_intent="sql",
-                        confidence_score=None
-                    )
-                # Fall through to default prompt if SQL returned None
-
             # Build system prompt
             system_prompt = self._build_system_prompt(detected_intent)
             
@@ -518,13 +478,13 @@ class ChatbotRAG:
             if detected_intent == "jobs" and context:
                 full_prompt = f"""{conv_context}
 
-=== DU LIEU CONG VIEC THUC TE TU DATABASE ===
+=== DU LIEU THUC TE TU HE THONG ===
 {context}
 === HET DU LIEU ===
 
 Cau hoi cua nguoi dung: {user_message}
 
-Hay liet ke cac cong viec thuc te tim duoc o tren. Chi dua tren du lieu thuc te, KHONG tu nghi ra.
+Hay tra loi dua tren du lieu thuc te o tren. Chi dua tren du lieu thuc te, KHONG tu nghi ra.
 """
             elif detected_intent == "career" and context:
                 full_prompt = f"""{conv_context}
@@ -573,6 +533,100 @@ Cau hoi cua nguoi dung: {user_message}
             logger.error(f" Chat error: {e}")
             raise
     
+    def chat_with_conversation(
+        self,
+        user_message: str,
+        conversation_id: str,
+    ) -> Dict[str, Any]:
+        """
+        Process a user message within a persistent conversation.
+        Returns dict with 'bot_response', 'sources', 'detected_intent'.
+        Conversation history is read from the database.
+        """
+        from services.conversation_service import get_recent_history
+
+        # Intent detection
+        detected_intent = self._detect_intent(user_message)
+        logger.info(f" Conversation {conversation_id} intent: {detected_intent}")
+
+        # Retrieve context
+        context = ""
+        sources: List[Dict[str, Any]] = []
+        if detected_intent == "jobs" and self.enable_rag:
+            if self._is_aggregate_query(user_message):
+                context, sources = self._handle_aggregate(user_message)
+            else:
+                context, sources = self._retrieve_context(user_message)
+        elif detected_intent == "career" and self.enable_rag:
+            try:
+                stats = self.retrieval_service.get_collection_stats()
+                top_skills = ', '.join(s['name'] for s in stats.get('top_skills', [])[:10])
+                top_cats = ', '.join(c['name'] for c in stats.get('top_categories', [])[:5])
+                context = (
+                    f"Thong ke thi truong hien tai:\n"
+                    f"  Tong viec lam: {stats.get('total_jobs', 'N/A')}\n"
+                    f"  So cong ty: {stats.get('total_companies', 'N/A')}\n"
+                    f"  Top nganh: {top_cats}\n"
+                    f"  Top ky nang: {top_skills}\n"
+                )
+            except Exception:
+                pass
+
+        # Build conversation context from DB
+        recent = get_recent_history(conversation_id, max_turns=5)
+        conv_lines = []
+        if recent:
+            conv_lines.append("Cuộc trò chuyện trước đây:")
+            for m in recent:
+                role_label = " Bạn" if m["role"] == "user" else " Chatbot"
+                conv_lines.append(f"{role_label}: {m['content'][:200]}")
+        conv_context = "\n".join(conv_lines)
+
+        # Build system prompt
+        system_prompt = self._build_system_prompt(detected_intent)
+
+        # Build full prompt
+        if detected_intent == "jobs" and context:
+            full_prompt = f"""{conv_context}
+
+=== DU LIEU THUC TE TU HE THONG ===
+{context}
+=== HET DU LIEU ===
+
+Cau hoi cua nguoi dung: {user_message}
+
+Hay tra loi dua tren du lieu thuc te o tren. Chi dua tren du lieu thuc te, KHONG tu nghi ra.
+"""
+        elif detected_intent == "career" and context:
+            full_prompt = f"""{conv_context}
+
+=== THONG KE THI TRUONG ===
+{context}
+=== HET THONG KE ===
+
+Cau hoi cua nguoi dung: {user_message}
+
+Hay tu van dua tren thong ke thi truong thuc te o tren.
+"""
+        else:
+            full_prompt = f"""{conv_context}
+
+Cau hoi cua nguoi dung: {user_message}
+"""
+
+        # Generate LLM response
+        bot_response = self.llm_service.generate_response(
+            full_prompt,
+            system_prompt=system_prompt
+        )
+
+        logger.info(f" Conversation response generated ({len(bot_response)} chars)")
+        return {
+            "bot_response": bot_response,
+            "sources": sources,
+            "detected_intent": detected_intent,
+        }
+
     def _calculate_confidence(self, sources: List[Dict[str, Any]]) -> Optional[float]:
         """Calculate confidence score based on sources"""
         if not sources:

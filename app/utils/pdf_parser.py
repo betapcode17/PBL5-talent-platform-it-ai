@@ -72,7 +72,7 @@ def extract_cv_info(cv_text: str) -> dict:
     try:
         @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
         def call_gemini():
-            model = genai.GenerativeModel("gemini-2.0-flash-lite")
+            model = genai.GenerativeModel("gemini-2.5-flash")
             return model.generate_content(prompt)
        
         response = call_gemini()

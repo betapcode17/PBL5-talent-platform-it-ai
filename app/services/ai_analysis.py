@@ -6,7 +6,7 @@ import json
 from typing import Dict, List, Optional, Any
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-from services.api_key_manager import get_next_api_key
+from .api_key_manager import get_next_api_key
 from prompts import cv_analysis_prompt, cv_improvement_prompt  # Import prompts
 
 # Initialize Gemini model with API key rotation

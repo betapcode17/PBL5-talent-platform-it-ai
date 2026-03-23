@@ -1,6 +1,6 @@
-# app/models/chat.py
+# app/models/chatbot.py
 """
-Chat data models for RAG chatbot.
+Chatbot data models for RAG chatbot.
 Định nghĩa các Pydantic models cho chat messages, responses, và history.
 """
 

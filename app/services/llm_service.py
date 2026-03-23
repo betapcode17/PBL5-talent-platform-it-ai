@@ -9,7 +9,7 @@ from typing import Optional
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 
-from services.api_key_manager import get_next_api_key
+from .api_key_manager import get_next_api_key
 
 logger = logging.getLogger(__name__)
 

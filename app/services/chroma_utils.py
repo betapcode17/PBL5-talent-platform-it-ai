@@ -14,9 +14,9 @@ from langchain_chroma import Chroma
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 import pandas as pd  # Fixed: import pandas as pd (not from turtle)
 
-from services.api_key_manager import get_next_api_key
-from services.db_utils import get_db_connection, create_tables
-from services.pg_database import get_all_jobs
+from .api_key_manager import get_next_api_key
+from .db_utils import get_db_connection, create_tables
+from .pg_database import get_all_jobs
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 

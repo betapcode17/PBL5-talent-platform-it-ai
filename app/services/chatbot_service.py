@@ -1,6 +1,6 @@
-# app/services/chat_service.py
+# app/services/chatbot_service.py
 """
-Chat Service - Main chatbot logic combining RAG + LLM.
+Chatbot Service - Main chatbot logic combining RAG + LLM.
 Handles chat sessions, message processing, and conversation flow.
 """
 
@@ -9,10 +9,10 @@ import uuid
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 
-from services.llm_service import get_llm_service
-from services.retrieval_service import get_retrieval_service
-from models.chat import ChatResponse, ChatHistoryItem, ChatRole, RAGContext
-from prompts.chat_system_prompt import CHAT_SYSTEM_PROMPTS
+from .llm_service import get_llm_service
+from .retrieval_service import get_retrieval_service
+from app.models.chatbot import ChatResponse, ChatHistoryItem, ChatRole, RAGContext
+from prompts.chatbot_system_prompt import CHAT_SYSTEM_PROMPTS
 
 logger = logging.getLogger(__name__)
 

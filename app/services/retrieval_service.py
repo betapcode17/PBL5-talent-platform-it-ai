@@ -8,8 +8,8 @@ import logging
 from typing import List, Optional, Dict, Any
 from langchain_core.documents import Document
 
-from services.chroma_utils import get_vectorstore
-from models.chat import RetrievedDocument
+from .chroma_utils import get_vectorstore
+from app.models.chatbot import RetrievedDocument
 
 logger = logging.getLogger(__name__)
 

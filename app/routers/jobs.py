@@ -1,10 +1,10 @@
 # app/routers/jobs.py
 from fastapi import APIRouter, HTTPException, Query
 from typing import Dict, Any, List, Set
-from models.responses import JobSearchInput, JobSearchResponse, JobSearchResult
-from services.db_utils import get_db_connection
-from services.ai_analysis import get_llm
-from services.chroma_utils import get_vectorstore
+from app.models.responses import JobSearchInput, JobSearchResponse, JobSearchResult
+from app.services.db_utils import get_db_connection
+from app.services.ai_analysis import get_llm
+from app.services.chroma_utils import get_vectorstore
 import json
 import logging
 from datetime import datetime, timedelta

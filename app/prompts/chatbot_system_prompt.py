@@ -1,6 +1,6 @@
-# app/prompts/chat_system_prompt.py
+# app/prompts/chatbot_system_prompt.py
 """
-Chat System Prompts - LangChain ChatPromptTemplate cho RAG chatbot.
+Chatbot System Prompts - LangChain ChatPromptTemplate cho RAG chatbot.
 Contains system prompts for different conversation contexts.
 """
 

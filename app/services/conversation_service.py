@@ -14,7 +14,7 @@ import psycopg2
 import psycopg2.extras
 
 from config import DATABASE_URL
-from models.chat import Conversation, ConversationMessage
+from app.models.chatbot import Conversation, ConversationMessage
 
 logger = logging.getLogger(__name__)
 

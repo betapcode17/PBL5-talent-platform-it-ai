@@ -31,20 +31,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 # Import routers with app. prefix (absolute from root)
-from routers.cv import router as cv_router
-from routers.jobs import router as jobs_router
-from routers.matching import router as matching_router
-from routers.utils import router as utils_router
-from routers.chat import router as chat_router
-from routers import candidates
+from app.routers.cv import router as cv_router
+from app.routers.jobs import router as jobs_router
+from app.routers.matching import router as matching_router
+from app.routers.utils import router as utils_router
+from app.routers.chatbot import router as chatbot_router
+from app.routers import candidates
 
 # Import error handlers
-from middleware.error_handler import setup_error_handlers
+from app.middleware.error_handler import setup_error_handlers
 # Import preload function
-from services.chroma_utils import preload_jobs as preload_jobs_to_chroma, preload_jobs_from_pg
+from app.services.chroma_utils import preload_jobs as preload_jobs_to_chroma, preload_jobs_from_pg
 
 # Import DATA_PATH from config
-from config import JOBS_CSV_PATH as DATA_PATH
+from app.config import JOBS_CSV_PATH as DATA_PATH
 
 app = FastAPI(
     title="AI CV-Job Matcher",
@@ -63,7 +63,7 @@ app.add_middleware(
 app.include_router(cv_router, prefix="/cv", tags=["CV"])
 app.include_router(jobs_router, prefix="/jobs", tags=["Jobs"])
 app.include_router(matching_router, prefix="/matching", tags=["Matching"])
-app.include_router(chat_router)  # Chat router doesn't need prefix (has /api/chat already)
+app.include_router(chatbot_router)  # Chatbot router doesn't need prefix (has /chatbot already)
 app.include_router(utils_router, tags=["Utils"])
 app.include_router(candidates.router, prefix="/candidates", tags=["Candidates"])
 
@@ -128,3 +128,4 @@ async def chat_page():
             "message": "Chat UI not found. Please run 'python scripts/preload_embeddings.py' first",
             "api_docs": "/docs"
         }
+

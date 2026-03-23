@@ -2,21 +2,21 @@
 from datetime import datetime
 from fastapi import APIRouter, HTTPException, Query, Request
 from typing import List, Optional
-from services.match_explain import build_why_match
-from models.core import MatchedJob
-from models.responses import (
+from app.services.match_explain import build_why_match
+from app.models.core import MatchedJob
+from app.models.responses import (
     ApplicationItem, MatchExplanation, MatchInput, MatchResponse, ApplyJobInput, ApplicationResponse, ApplicationsResponse
 )
-from services.chroma_utils import index_cv_extracts
-from services.rag_matching import match_cv
-from services.db_utils import (
+from app.services.chroma_utils import index_cv_extracts
+from app.services.rag_matching import match_cv
+from app.services.db_utils import (
     get_all_cvs, get_db_connection, get_cached_matches, get_filtered_jobs, get_jobs_details_by_ids, insert_cv_record, insert_match_log,
     insert_application, get_applications_by_cv, check_application_exists
 )
-from services.ai_analysis import generate_why_match
-from utils.date_utils import normalize_date, normalize_deadline
-from utils.validators import _to_int_job_id
-from utils.pdf_parser import parse_cv_input_string
+from app.services.ai_analysis import generate_why_match
+from app.utils.date_utils import normalize_date, normalize_deadline
+from app.utils.validators import _to_int_job_id
+from app.utils.pdf_parser import parse_cv_input_string
 import time
 import uuid
 import logging
@@ -25,7 +25,7 @@ import re
 
 router = APIRouter()
 
-from services.match_explain import normalize_explanation, build_why_match
+from app.services.match_explain import normalize_explanation, build_why_match
 
 @router.post("/", response_model=MatchResponse)
 async def match_cv_endpoint(input: MatchInput, request: Request):

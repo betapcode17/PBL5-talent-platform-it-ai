@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
-from models.core import CandidateSearchInput, CandidateSearchResponse
-from services.candidate_matching import match_candidates_to_job 
+from app.models.core import CandidateSearchInput, CandidateSearchResponse
+from app.services.candidate_matching import match_candidates_to_job 
 
 router = APIRouter(prefix="/candidates", tags=["Candidates"])  
 

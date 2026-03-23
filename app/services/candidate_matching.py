@@ -11,13 +11,13 @@ from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.runnables import RunnableLambda
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-from models.core import CandidateSearchInput, CandidateSearchResponse, MatchedCandidate, Suggestion
-from services.api_key_manager import get_next_api_key
-from services.chroma_utils import get_vectorstore
+from app.models.core import CandidateSearchInput, CandidateSearchResponse, MatchedCandidate, Suggestion
+from .api_key_manager import get_next_api_key
+from .chroma_utils import get_vectorstore
 
 from prompts import qa_prompt
-from services.db_utils import get_db_connection
-from services.rag_helpers import _prefix_doc_with_id  # Reuse QA prompt, adjust for reverse
+from .db_utils import get_db_connection
+from .rag_helpers import _prefix_doc_with_id  # Reuse QA prompt, adjust for reverse
 
 logging.basicConfig(level=logging.INFO)
 

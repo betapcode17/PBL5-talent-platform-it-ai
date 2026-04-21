@@ -1,28 +1,17 @@
 """
-AI Analysis Functions - Phân tích CV và Jobs bằng Gemini AI
+AI Analysis Functions - Phân tích CV và Jobs bằng Local Ollama hoặc Gemini
 """
 import logging
 import json
 from typing import Dict, List, Optional, Any
-from langchain_google_genai import ChatGoogleGenerativeAI
 
-from .api_key_manager import get_next_api_key
-from prompts import cv_analysis_prompt, cv_improvement_prompt  # Import prompts
+from app.services.llm_service import get_llm_service
+from app.prompts import cv_analysis_prompt, cv_improvement_prompt  # Import prompts
 
-# Initialize Gemini model with API key rotation
+# Get LLM service (Ollama or Gemini based on config)
 def get_llm():
-    """
-    Get LLM instance with rotated API key
-    Uses gemini-2.5-flash (stable model with available quota)
-    """
-    return ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash",
-        google_api_key=get_next_api_key(),
-        temperature=0.3
-    )
-
-# Legacy global instance (for backward compatibility)
-llm = get_llm()
+    """Get LLM instance (Ollama or Gemini)"""
+    return get_llm_service()
 
 async def analyze_cv_insights(cv_info: Dict) -> Dict[str, Any]:
     """
@@ -35,7 +24,7 @@ async def analyze_cv_insights(cv_info: Dict) -> Dict[str, Any]:
         Dict chứa quality_score, strengths, weaknesses, completeness, market_fit
     """
     try:
-        # Use fresh LLM instance with rotated API key
+        # Get LLM instance (works with both Ollama and Gemini)
         llm_instance = get_llm()
         
         # Format input for prompt
@@ -49,9 +38,17 @@ async def analyze_cv_insights(cv_info: Dict) -> Dict[str, Any]:
             "education_count": len(cv_info.get('education', []))
         }
         
-        # Invoke prompt
-        response = await llm_instance.ainvoke(cv_analysis_prompt.format(**formatted_input))
-        content = response.content.strip() # type: ignore
+        # Invoke prompt - compatible with both Ollama and Gemini
+        prompt_text = cv_analysis_prompt.format(**formatted_input)
+        
+        # Try to use ainvoke if available (Gemini), otherwise use generate_response
+        if hasattr(llm_instance.llm, 'ainvoke'):
+            response = await llm_instance.llm.ainvoke(prompt_text)
+            content = response.content.strip() # type: ignore
+        else:
+            # Ollama path - use async wrapper
+            response = await llm_instance.llm.ainvoke(prompt_text)
+            content = response.content.strip()
         
         # Remove markdown code blocks if present
         if content.startswith("```json"):
@@ -76,11 +73,11 @@ async def analyze_cv_insights(cv_info: Dict) -> Dict[str, Any]:
         if 'market_fit_score' in result:
             result['market_fit_score'] = max(0.0, min(1.0, float(result['market_fit_score'])))
 
-        logging.info(f" Phân tích CV thành công: quality_score={result.get('quality_score')}, completeness={result.get('completeness_score')}")
+        logging.info(f"✓ Phân tích CV thành công: quality_score={result.get('quality_score')}, completeness={result.get('completeness_score')}")
         return result
         
     except json.JSONDecodeError as e:
-        logging.error(f" Lỗi parse JSON từ Gemini: {e}")
+        logging.error(f"✗ Lỗi parse JSON: {e}")
         logging.error(f"Response content: {content}")
         # Return default values
         return {
@@ -98,7 +95,7 @@ async def analyze_cv_insights(cv_info: Dict) -> Dict[str, Any]:
             "weaknesses": ["Cần phân tích thêm"]
         }
     except Exception as e:
-        logging.error(f" Lỗi phân tích CV: {e}")
+        logging.error(f"✗ Lỗi phân tích CV: {e}")
         raise
 
 
@@ -114,7 +111,7 @@ async def generate_cv_improvements(cv_info: Dict, insights: Dict) -> List[Dict[s
         List các gợi ý cải thiện
     """
     try:
-        # Use fresh LLM instance with rotated API key
+        # Get LLM instance (works with both Ollama and Gemini)
         llm_instance = get_llm()
         
         # Format input for prompt
@@ -131,8 +128,16 @@ async def generate_cv_improvements(cv_info: Dict, insights: Dict) -> List[Dict[s
         }
         
         # Invoke prompt
-        response = await llm_instance.ainvoke(cv_improvement_prompt.format(**formatted_input))
-        content = response.content.strip() # type: ignore
+        prompt_text = cv_improvement_prompt.format(**formatted_input)
+        
+        # Try to use ainvoke if available (Gemini), otherwise use generate_response
+        if hasattr(llm_instance.llm, 'ainvoke'):
+            response = await llm_instance.llm.ainvoke(prompt_text)
+            content = response.content.strip() # type: ignore
+        else:
+            # Ollama path - use async wrapper
+            response = await llm_instance.llm.ainvoke(prompt_text)
+            content = response.content.strip()
 
         # Remove markdown code blocks
         if content.startswith("```json"):
@@ -155,11 +160,11 @@ async def generate_cv_improvements(cv_info: Dict, insights: Dict) -> List[Dict[s
             if isinstance(imp.get('suggested_add'), str):
                 imp['suggested_add'] = [imp['suggested_add']] if imp['suggested_add'] else None
 
-        logging.info(f" Tạo {len(improvements)} gợi ý cải thiện")
+        logging.info(f"✓ Tạo {len(improvements)} gợi ý cải thiện")
         return improvements
         
     except json.JSONDecodeError as e:
-        logging.error(f" Lỗi parse JSON: {e}")
+        logging.error(f"✗ Lỗi parse JSON: {e}")
         logging.error(f"Response: {content}")
         return [
             {
@@ -173,7 +178,7 @@ async def generate_cv_improvements(cv_info: Dict, insights: Dict) -> List[Dict[s
             }
         ]
     except Exception as e:
-        logging.error(f" Lỗi tạo gợi ý: {e}")
+        logging.error(f"✗ Lỗi tạo gợi ý: {e}")
         raise
 
 

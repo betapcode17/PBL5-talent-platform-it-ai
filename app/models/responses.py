@@ -1,6 +1,6 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field # type: ignore
 from typing import List, Dict, Any, Optional, Union
-from .core import Education, Experience, MatchedJob, Suggestion, ModelName, DeleteFileRequest, DocumentInfo, DocumentListResponse, MatchInput, JobDetails # type: ignore
+from .core import Education, Experience, MatchedJob, Suggestion, DeleteFileRequest, DocumentInfo, DocumentListResponse, MatchInput, JobDetails # type: ignore
 
 class MatchResponse(BaseModel):
     name: Optional[str] = Field(None, description="Tên ứng viên")
@@ -13,7 +13,7 @@ class MatchResponse(BaseModel):
     matched_jobs: List[MatchedJob] = Field(default_factory=list, description="Danh sách công việc khớp")
     suggestions: List[Suggestion] = Field(default_factory=list, description="Gợi ý cải thiện")
     session_id: Optional[str] = Field(None, description="ID phiên khớp")
-    model: ModelName = Field(..., description="Mô hình AI sử dụng")
+    model: Optional[str] = Field(None, description="Model (ignored - uses Ollama)")
 
 
 class CVInsightsResponse(BaseModel):

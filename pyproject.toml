@@ -22,11 +22,10 @@ langchain = "0.1.17"  # Phiên bản mới hơn, hỗ trợ tenacity 9.x
 langchain-core = "0.1.70"  # Tương thích với langchain 0.1.x
 langchain-community = "0.1.16"  # Phiên bản tương thích
 langchain-chroma = "0.1.4"  # Giữ nguyên
-langchain-google-genai = "0.0.11"  # Tương thích
+langchain-ollama = "0.1.0"  # Local LLM only
 
 # Các dependencies khác - CỐ ĐỊNH PHIÊN BẢN
 chromadb = "0.5.0"
-google-generativeai = "0.5.0"
 pdfplumber = "0.11.4"
 python-multipart = "0.0.9"
 python-dotenv = "1.0.1"

@@ -5,15 +5,20 @@ Provides REST API for chat interactions.
 """
 
 import logging
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, UploadFile, File, Form, Request  # type: ignore
 from typing import Optional, List
 
-from app.services.chatbot_service import get_chatbot
+from app.services.chatbot_service import get_chatbot, get_tool_aware_chatbot
 from app.services import conversation_service
 from app.models.chatbot import (
     HealthCheckResponse,
     Conversation, ConversationMessage, SendMessageRequest, SendMessageResponse,
+    RenameConversationRequest, RenameConversationResponse,
 )
+from app.utils.pdf_parser import extract_text_from_pdf
+from app.services.db_utils import insert_cv_record
+import os
+import tempfile
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +43,7 @@ async def health_check() -> HealthCheckResponse:
         "version": "1.0.0",
         "services": {
             "chroma": true,
-            "gemini": true,
+            "ollama": true,
             "database": true
         }
     }
@@ -53,7 +58,7 @@ async def health_check() -> HealthCheckResponse:
             status="ok",
             services={ # type: ignore
                 "chroma": True,
-                "gemini": True,
+                "ollama": True,
                 "database": True
             }
         )
@@ -64,7 +69,7 @@ async def health_check() -> HealthCheckResponse:
             status="error",
             services={ # type: ignore
                 "chroma": False,
-                "gemini": False,
+                "ollama": False,
                 "database": False
             }
         )
@@ -100,60 +105,103 @@ async def get_chat_info():
             "Real-time document retrieval"
         ],
         "collection_types": ["jobs", "cvs"],
-        "model": "Google Gemini Pro"
+        "model": "Ollama (Local LLM)"
     }
 
 
 
 
-@router.post("/message", response_model=SendMessageResponse)
-async def send_chat_message(req: SendMessageRequest) -> SendMessageResponse:
-    """
-    Send a message to the AI chatbot. Creates a new conversation if conversationId is not provided.
-    Maps to frontend: sendMessageApi
-    """
+@router.post("/message")
+async def send_chat_message(
+    message: str = Form(...),
+    conversationId: Optional[str] = Form(None),
+    attachments: Optional[List[UploadFile]] = File(None),  # 🔥 FIX QUAN TRỌNG
+):
     try:
-        chatbot = get_chatbot()
+        logger.info(f"[DEBUG] message={message}, conversationId={conversationId}")
 
-        # Create or reuse conversation
-        if req.conversationId:
-            conv = conversation_service.get_conversation(req.conversationId)
+        file_ids = []
+
+     
+        attachments = attachments or []
+
+        logger.info(f"[FILE] Attachments received: {len(attachments)} items")
+
+        for file in attachments:
+            if not file.filename:
+                continue
+
+            if not file.filename.lower().endswith(".pdf"):
+                logger.warning(f"[FILE] Skip non-PDF: {file.filename}")
+                continue
+
+            try:
+                file_data = await file.read()
+
+                if len(file_data) > 10 * 1024 * 1024:
+                    logger.warning(f"[FILE] Too large: {file.filename}")
+                    continue
+
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+                    tmp.write(file_data)
+                    temp_path = tmp.name
+
+                logger.info(f"[FILE] Saved: {temp_path}")
+
+                # Debug PDF content
+                try:
+                    text = extract_text_from_pdf(temp_path)
+                    logger.info(f"[PDF] Content preview: {text[:300]}")
+                except Exception as e:
+                    logger.warning(f"[PDF] Read error: {e}")
+
+                file_ids.append(temp_path)
+
+            except Exception as e:
+                logger.error(f"[FILE ERROR] {file.filename}: {e}")
+
+        logger.info(f"[FILE] Final file_ids: {file_ids}")
+
+        # =============================
+        # ✅ CHATBOT
+        # =============================
+        chatbot = get_tool_aware_chatbot()
+
+        # Create / get conversation
+        if conversationId:
+            conv = conversation_service.get_conversation(conversationId)
             if not conv:
                 raise HTTPException(status_code=404, detail="Conversation not found")
             conversation_id = conv.id
         else:
-            # Auto-generate a title from the first message
-            title = req.message[:60] + ("..." if len(req.message) > 60 else "")
-            conv = conversation_service.create_conversation(title=title)
+            conv = conversation_service.create_conversation(title=message[:50])
             conversation_id = conv.id
 
-        # Persist the user message
+        # Save user message
         conversation_service.add_message(
             conversation_id=conversation_id,
             role="user",
-            content=req.message,
+            content=message,
         )
 
-        # Process through the RAG chatbot
-        result = chatbot.chat_with_conversation(
-            user_message=req.message,
+        # Call chatbot
+        result = await chatbot.chat_with_tools(
+            user_message=message,
             conversation_id=conversation_id,
+            file_ids=file_ids if file_ids else None,
         )
 
-        # Persist the assistant response
-        # If this is the first exchange, set the conversation title from the user message
-        update_title = None
-        if not req.conversationId:
-            update_title = req.message[:60] + ("..." if len(req.message) > 60 else "")
-
+        # Save bot message
         assistant_msg = conversation_service.add_message(
             conversation_id=conversation_id,
             role="assistant",
             content=result["bot_response"],
             sources=result.get("sources"),
             detected_intent=result.get("detected_intent"),
-            update_title=update_title,
         )
+
+        if not assistant_msg:
+            raise HTTPException(status_code=500, detail="Không lưu được tin nhắn")
 
         return SendMessageResponse(
             message=assistant_msg,
@@ -163,8 +211,8 @@ async def send_chat_message(req: SendMessageRequest) -> SendMessageResponse:
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error in send_chat_message: {e}")
-        raise HTTPException(status_code=500, detail=f"Lỗi xử lý tin nhắn: {str(e)}")
+        logger.error(f"[ERROR] send_chat_message: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/conversation", response_model=List[Conversation])
@@ -227,3 +275,51 @@ async def delete_conversation_endpoint(conversation_id: str):
     except Exception as e:
         logger.error(f"Error deleting conversation: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/conversation/rename", response_model=RenameConversationResponse)
+async def rename_conversation_endpoint(req: RenameConversationRequest) -> RenameConversationResponse:
+    """
+    Rename a conversation.
+    Maps to frontend: renameConversation
+    
+    Request:
+    ```json
+    {
+        "conversationId": "uuid-here",
+        "newTitle": "New conversation title"
+    }
+    ```
+    
+    Response:
+    ```json
+    {
+        "conversationId": "uuid-here",
+        "newTitle": "New conversation title",
+        "updatedAt": "2026-04-19T10:30:00.000Z",
+        "success": true,
+        "message": "Đã đổi tên đoạn chat thành công"
+    }
+    ```
+    """
+    try:
+        updated_conv = conversation_service.rename_conversation(
+            conv_id=req.conversationId,
+            new_title=req.newTitle
+        )
+        
+        if not updated_conv:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        
+        return RenameConversationResponse(
+            conversationId=req.conversationId,
+            newTitle=req.newTitle,
+            updatedAt=updated_conv.updateAt,
+            success=True,
+            message="Đã đổi tên đoạn chat thành công"
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error renaming conversation: {e}")
+        raise HTTPException(status_code=500, detail=f"Lỗi đổi tên đoạn chat: {str(e)}")

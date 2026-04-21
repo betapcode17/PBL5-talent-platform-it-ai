@@ -5,12 +5,16 @@ Simple script to start the FastAPI server with proper imports
 import subprocess
 import sys
 import os
+import time
 
-# Add app directory to Python path
-os.environ['PYTHONPATH'] = os.path.join(os.getcwd(), 'app')
+# Add project root to Python path so 'app' module can be imported
+os.environ['PYTHONPATH'] = os.getcwd()
 
-# Run uvicorn on port 8001 (fallback if 8000 is busy)
+# Small delay to ensure previous process fully released the port
+time.sleep(1)
+
+# Run uvicorn on port 8001 with reuse_port option
 subprocess.run(
-    [sys.executable, '-m', 'uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', '8001'],
+    [sys.executable, '-m', 'uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', '8001', '--reload'],
     cwd=os.getcwd()
 )

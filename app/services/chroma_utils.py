@@ -2,6 +2,7 @@
 """
 Chroma utilities for vector storage and job/CV preloading.
 Supports separate collections for jobs and CVs (for reverse matching).
+Uses local HuggingFace embeddings (no API key needed).
 """
 
 import os
@@ -9,14 +10,14 @@ import json
 import logging
 from pathlib import Path
 from typing import List
-from langchain_core.documents import Document
+from app.services.db_utils import create_tables, get_db_connection
+from app.services.pg_database import get_all_jobs
+from langchain_core.documents import Document # type: ignore
 from langchain_chroma import Chroma
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_ollama import OllamaEmbeddings
 import pandas as pd  # Fixed: import pandas as pd (not from turtle)
 
-from .api_key_manager import get_next_api_key
-from .db_utils import get_db_connection, create_tables
-from .pg_database import get_all_jobs
+import logging
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -42,20 +43,18 @@ def get_vectorstore(collection_name: str = "jobs") -> Chroma:
         return _job_vectorstore
 
 def _initialize_vectorstore(collection_name: str) -> Chroma:
-    """Internal init for a specific collection."""
+    """Internal init for a specific collection using local Ollama embeddings."""
     try:
-        google_api_key = get_next_api_key()
-        if not google_api_key:
-            raise ValueError("GOOGLE_API_KEY not found in environment variables")
-        
         base_dir = Path(__file__).resolve().parent.parent  # app/ -> root
         chroma_path = base_dir / "db" / "chroma_db" / collection_name
         chroma_path.mkdir(parents=True, exist_ok=True)
         
-        embedding_function = GoogleGenerativeAIEmbeddings(
-            model="models/gemini-embedding-001",
-            google_api_key=google_api_key, # type: ignore
-            task_type="retrieval_document"  # Tối ưu cho retrieval
+        # Use local Ollama embeddings (no API key needed, no network download)
+        # Runs on http://localhost:11434
+        from app.config import OLLAMA_BASE_URL
+        embedding_function = OllamaEmbeddings(
+            base_url=OLLAMA_BASE_URL,
+            model="nomic-embed-text"  # Multilingual, lightweight, fast
         )
         
         vectorstore = Chroma(
@@ -63,11 +62,28 @@ def _initialize_vectorstore(collection_name: str) -> Chroma:
             collection_name=collection_name,
             embedding_function=embedding_function
         )
-        logging.info(f" Initialized Chroma vectorstore for '{collection_name}' with Google Gemini Embedding API")
+        logging.info(f"✓ Initialized Chroma vectorstore for '{collection_name}' with local Ollama embeddings")
         return vectorstore
     except Exception as e:
-        logging.error(f" Error initializing Chroma for '{collection_name}': {e}")
-        raise
+        # If initialization fails, try without explicit embedding function (use existing)
+        logging.warning(f"⚠ Ollama embeddings init failed for '{collection_name}': {e}")
+        logging.info(f"ℹ Attempting to load existing ChromaDB without re-embedding...")
+        
+        try:
+            base_dir = Path(__file__).resolve().parent.parent
+            chroma_path = base_dir / "db" / "chroma_db" / collection_name
+            
+            # Load existing vectorstore without providing embedding function
+            vectorstore = Chroma(
+                persist_directory=str(chroma_path),
+                collection_name=collection_name
+            )
+            logging.info(f"✓ Loaded existing Chroma vectorstore for '{collection_name}' (using cached embeddings)")
+            return vectorstore
+        except Exception as e2:
+            logging.error(f"✗ Failed to load ChromaDB for '{collection_name}': {e2}")
+            # Return empty vectorstore so server doesn't crash
+            raise
 
 def preload_jobs(csv_path: str, batch_size: int = 1000) -> bool:
     """

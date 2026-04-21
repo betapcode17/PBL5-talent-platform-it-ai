@@ -24,7 +24,7 @@ from typing import Dict, List, Optional, Any
 import psycopg2
 import psycopg2.extras
 
-from config import DATABASE_URL
+from app.config import DATABASE_URL
 
 logger = logging.getLogger(__name__)
 

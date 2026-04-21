@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter # type: ignore
 
 from app.models.core import CandidateSearchInput, CandidateSearchResponse
 from app.services.candidate_matching import match_candidates_to_job 

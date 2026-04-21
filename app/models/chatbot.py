@@ -4,7 +4,7 @@ Chatbot data models for RAG chatbot.
 Định nghĩa các Pydantic models cho chat messages, responses, và history.
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field # type: ignore
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from enum import Enum
@@ -119,6 +119,8 @@ class ConversationMessage(BaseModel):
     role: str  # 'user' | 'assistant'
     content: str
     createdAt: datetime
+    sources: Optional[List[Dict[str, Any]]] = None
+    detectedIntent: Optional[str] = None
 
 
 class Conversation(BaseModel):
@@ -134,6 +136,7 @@ class SendMessageRequest(BaseModel):
     """Request to send a message to the AI chatbot"""
     conversationId: Optional[str] = None
     message: str = Field(..., min_length=1, max_length=2000)
+    file_ids: Optional[List[str]] = None  # Optional: list of uploaded CV IDs to analyze with
 
 
 class SendMessageResponse(BaseModel):
@@ -144,7 +147,22 @@ class SendMessageResponse(BaseModel):
     services: Dict[str, bool] = Field(
         default_factory=lambda: {
             "chroma": True,
-            "gemini": True,
+            "ollama": True,
             "database": True
         }
     )
+
+
+class RenameConversationRequest(BaseModel):
+    """Request to rename a conversation"""
+    conversationId: str = Field(..., description="ID của đoạn chat")
+    newTitle: str = Field(..., min_length=1, max_length=200, description="Tên mới cho đoạn chat")
+
+
+class RenameConversationResponse(BaseModel):
+    """Response after renaming a conversation"""
+    conversationId: str
+    newTitle: str
+    updatedAt: datetime
+    success: bool = True
+    message: str = "Đã đổi tên đoạn chat thành công"

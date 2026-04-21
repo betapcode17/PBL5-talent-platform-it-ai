@@ -379,11 +379,11 @@ async def generate_chart_insights(request: Dict[str, Any]):
             return {"analysis": "Thiếu thông tin biểu đồ để phân tích."}
         
         # Import LLM from ai_analysis
-        from services.ai_analysis import get_llm
+        from app.services.ai_analysis import get_llm
         llm_instance = get_llm()
         
         # Import chart prompts
-        from prompts import chart_insights_prompts
+        from app.prompts import chart_insights_prompts
         
         # Get prompt for chart_type
         prompt_template = chart_insights_prompts.get(chart_type)
@@ -425,14 +425,14 @@ async def reindex_jobs_to_chroma():
     Xoa collection cu va tao lai tu dau.
     """
     try:
-        from services.chroma_utils import preload_jobs_from_pg
+        from app.services.chroma_utils import preload_jobs_from_pg
         
         logging.info(" Starting force re-index from PostgreSQL to ChromaDB...")
         
         success = preload_jobs_from_pg(batch_size=50, force=True)
         
         if success:
-            from services.chroma_utils import get_vectorstore
+            from app.services.chroma_utils import get_vectorstore
             count = get_vectorstore("jobs")._collection.count()
             return {
                 "success": True,

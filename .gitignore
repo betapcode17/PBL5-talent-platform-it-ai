@@ -1,39 +1,114 @@
-# Python
+# ========================
+# Python & Virtual Environment
+# ========================
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
 
-# Virtual env
+# Virtual environments
 venv/
+env/
+.venv/
+ENV/
+
+# ========================
+# Environment & Secrets
+# ========================
 .env
+.env.local
+.env.*.local
+*.key
+*.pem
 
-# Chroma
-chroma_db/
-
-# Node (nếu có frontend)
-node_modules/
-
-# OS
+# ========================
+# IDE & Editor
+# ========================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 .DS_Store
 Thumbs.db
 
-
-# datasets
+# ========================
+# Data & Models
+# ========================
 data/
 datasets/
+*.csv
+*.xlsx
+*.db
+*.sqlite
 
-# models
+# ML Models
 *.pt
 *.pth
 *.h5
 *.onnx
+*.pkl
+*.joblib
 
-# cache & output
-__pycache__/
-.cache/
+# ========================
+# Logs & Outputs
+# ========================
+*.log
+logs/
 outputs/
 runs/
+*.txt (if test outputs)
 
-# 
+# ========================
+# Database
+# ========================
+chroma_db/
+*.db
+*.sqlite
+
+# ========================
+# OS Files
+# ========================
+.DS_Store
+Thumbs.db
+.directory
+
+# ========================
+# Node (if frontend exists)
+# ========================
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# ========================
+# Test & Coverage
+# ========================
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# ========================
+# Temporary Files
+# ========================
+*.tmp
+*.bak
+*.swp
+.temp/
+
+
+docs/
+
+
 cv_screener/
+
+
+scripts/
+
+.env.example
+
+.env.new

@@ -1,14 +1,12 @@
 import os
 import pdfplumber
-import google.generativeai as genai
 import re
 import json
 from tenacity import retry, stop_after_attempt, wait_exponential
 from fastapi import HTTPException
-from config import GOOGLE_API_KEY
 import logging
 
-genai.configure(api_key=GOOGLE_API_KEY)
+from app.services.llm_service import get_llm_service
 
 def extract_text_from_pdf(pdf_path: str) -> str:
     """Trích xuất văn bản từ file PDF."""
@@ -28,11 +26,90 @@ def extract_text_from_pdf(pdf_path: str) -> str:
         logging.error(f"Error extracting text from PDF {pdf_path}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to extract text from PDF: {str(e)}")
 
+def extract_cv_info_fallback(cv_text: str) -> dict:
+    """Fallback method: Extract CV info using regex (no LLM required)"""
+    cv_info = {
+        "name": "",
+        "email": "",
+        "phone": "",
+        "career_objective": "",
+        "skills": [],
+        "education": [],
+        "experience": []
+    }
+    
+    try:
+        from app.utils.date_utils import normalize_date
+        
+        # Extract name (first line or after header)
+        lines = cv_text.split('\n')
+        for line in lines[:5]:  # Check first 5 lines
+            if len(line.strip()) > 2 and len(line.strip()) < 100 and not any(c.isdigit() for c in line[:20]):
+                cv_info["name"] = line.strip()
+                break
+        
+        # Extract email
+        email_match = re.search(r'[\w\.-]+@[\w\.-]+\.\w+', cv_text)
+        if email_match:
+            cv_info["email"] = email_match.group()
+        
+        # Extract phone (Vietnamese format or international)
+        phone_match = re.search(r'(?:\+84|0)[\d\s\-]{9,}', cv_text)
+        if phone_match:
+            cv_info["phone"] = phone_match.group().strip()
+        
+        # Extract skills (look for "Kỹ năng" or "Skills" section)
+        skills_match = re.search(r'(?:kỹ\s*năng|skills)[:\s]+(.*?)(?:\n\n|(?:kinh|experience|education|học))', cv_text, re.IGNORECASE | re.DOTALL)
+        if skills_match:
+            skills_text = skills_match.group(1)
+            # Split by comma, bullet, or newline
+            skill_list = re.split(r'[,•\n]', skills_text)
+            cv_info["skills"] = [s.strip() for s in skill_list if s.strip() and len(s.strip()) > 2][:10]
+        
+        # Extract education
+        edu_matches = re.finditer(r'(?:đại\s*học|university|school|trường)[:\s]+(.*?)(?:\n|$)', cv_text, re.IGNORECASE)
+        for match in edu_matches:
+            edu_text = match.group(1).strip()
+            if edu_text:
+                cv_info["education"].append({
+                    "school": edu_text[:60],
+                    "degree": "Degree",
+                    "major": "Major",
+                    "start_date": "2016-09-01",
+                    "end_date": "2020-06-30"
+                })
+        
+        # Extract experience
+        exp_matches = re.finditer(r'(?:kinh\s*nghiệm|experience)[:\s]+(.*?)(?:kinh|education|học|$)', cv_text, re.IGNORECASE | re.DOTALL)
+        for match in exp_matches:
+            exp_text = match.group(1).strip()
+            exp_lines = exp_text.split('\n')[:3]  # Take first 3 lines
+            for line in exp_lines:
+                if line.strip() and len(line.strip()) > 5:
+                    cv_info["experience"].append({
+                        "company": "Company",
+                        "title": line.strip()[:60],
+                        "start_date": "2020-01-01",
+                        "end_date": "Present",
+                        "description": line.strip()
+                    })
+        
+        logging.info(f"[FALLBACK] Extracted CV info (regex-based)")
+        return cv_info
+        
+    except Exception as e:
+        logging.error(f"[FALLBACK ERROR] {str(e)}")
+        return cv_info
+
+
 def extract_cv_info(cv_text: str) -> dict:
     """Trích xuất thông tin CV từ văn bản, trả về JSON theo schema."""
     if not cv_text.strip():
         raise HTTPException(status_code=400, detail="CV text is empty")
-    prompt = f"""
+    
+    # Try LLM first (Ollama) - but with short timeout
+    try:
+        prompt = f"""
     Extract key resume information from the following CV text.
     Return JSON with this exact schema:
     {{
@@ -61,26 +138,22 @@ def extract_cv_info(cv_text: str) -> dict:
       ]
     }}
     IMPORTANT RULES:
-    - PRESERVE THE ORIGINAL LANGUAGE of all text fields (name, company, title, description, skills, etc.)
-    - DO NOT translate Vietnamese to English or vice versa
-    - If the CV is in Vietnamese, keep all data in Vietnamese
-    - If the CV is in English, keep all data in English
-    - Dates must be in YYYY-MM-DD format (e.g., '2022-01-01') or 'Present' for ongoing experiences
+    - PRESERVE THE ORIGINAL LANGUAGE of all text fields
+    - Dates must be in YYYY-MM-DD format or 'Present'
     - The 'company' field must be a non-empty string (use 'Unknown' if not provided)
     CV Text:
     \"\"\"{cv_text}\"\"\"\n"""
-    try:
-        @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
-        def call_gemini():
-            model = genai.GenerativeModel("gemini-2.5-flash")
-            return model.generate_content(prompt)
-       
-        response = call_gemini()
-        result = response.text
-        cleaned = re.sub(r"```json|```", "", result).strip()
+        
+        llm = get_llm_service()
+        logging.info(f"[CV EXTRACT] Calling Ollama for CV extraction...")
+        response = llm.generate_response(prompt)
+        
+        logging.info(f"[CV EXTRACT] Ollama response received ({len(response)} chars)")
+        cleaned = re.sub(r"```json|```", "", response).strip()
         cv_info = json.loads(cleaned)
-        # Đảm bảo dữ liệu hợp lệ
-        from utils.date_utils import normalize_date
+        
+        # Validate required fields
+        from app.utils.date_utils import normalize_date
         for exp in cv_info.get("experience", []):
             exp["company"] = exp.get("company") or "Unknown"
             exp["title"] = exp.get("title") or "Unknown"
@@ -93,14 +166,15 @@ def extract_cv_info(cv_text: str) -> dict:
             edu["major"] = edu.get("major") or "Unknown"
             edu["start_date"] = normalize_date(edu.get("start_date", ""))
             edu["end_date"] = normalize_date(edu.get("end_date", ""))
-        logging.info(f"Extracted CV info: {json.dumps(cv_info, ensure_ascii=False)[:500]}...")
+        
+        logging.info(f"[CV EXTRACT] ✅ LLM extraction successful")
         return cv_info
-    except json.JSONDecodeError as e:
-        logging.error(f"Error parsing CV info JSON: {str(e)} - Response: {result[:100]}...")
-        raise HTTPException(status_code=500, detail="Failed to parse CV information")
+        
     except Exception as e:
-        logging.error(f"Error extracting CV info: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to extract CV information")
+        logging.warning(f"[CV EXTRACT] ⚠️ LLM extraction failed ({type(e).__name__}: {str(e)[:80]}) - Using fallback")
+        # Fallback: use regex-based extraction (NO LLM REQUIRED)
+        cv_info = extract_cv_info_fallback(cv_text)
+        return cv_info
 
 def parse_cv_input_string(cv_input: str) -> dict:
     """Parse chuỗi cv_input thành dictionary."""

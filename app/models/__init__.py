@@ -1,5 +1,4 @@
 from .core import (
-    ModelName,
     Education,
     Experience,
     MatchedJob,
@@ -30,7 +29,6 @@ from .responses import (
 
 __all__ = [
     # Core models
-    'ModelName',
     'Education',
     'Experience',
     'MatchedJob',

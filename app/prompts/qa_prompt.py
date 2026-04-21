@@ -4,7 +4,7 @@ Escaped literals for LangChain template safety.
 Used in rag_matching.get_rag_components().
 """
 
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder # type: ignore
 
 qa_prompt = ChatPromptTemplate.from_messages([
     (

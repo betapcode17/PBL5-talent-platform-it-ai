@@ -4,12 +4,7 @@ import json
 import logging
 from typing import List, Dict
 
-from langchain_core.documents import Document # type: ignore
-
-from app.services.chroma_utils import get_vectorstore
 from app.services.rag_helpers import _to_int_job_id, _prefix_doc_with_id
-from app.services.llm_service import get_llm_service
-from app.prompts import rewrite_prompt, qa_prompt 
 
 logging.basicConfig(level=logging.INFO)
 
@@ -18,6 +13,10 @@ logging.basicConfig(level=logging.INFO)
 async def match_cv(cv: dict, filtered_job_ids: List[int], session_id: str):
     """Match CV to jobs using Ollama LLM and ChromaDB retrieval."""
     try:
+        from langchain_core.documents import Document  # type: ignore
+        from app.services.chroma_utils import get_vectorstore
+        from app.services.llm_service import get_llm_service
+
         # Validate input
         if not isinstance(filtered_job_ids, list):
             logging.error(f" filtered_job_ids phải là list, nhận được: {type(filtered_job_ids)}")

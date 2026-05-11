@@ -1,3 +1,6 @@
+from __future__ import annotations
+from xml.dom.minidom import Document
+
 # app/services/rag_helpers.py
 """
 Helper functions for RAG matching.
@@ -7,9 +10,7 @@ Contains: _to_int_job_id, _prefix_doc_with_id, verify_job_id_consistency
 import re
 import json
 import logging
-from langchain_core.documents import Document
 from typing import List
-from .chroma_utils import get_vectorstore
 from .db_utils import get_db_connection
 
 def _to_int_job_id(x):
@@ -27,20 +28,23 @@ def _to_int_job_id(x):
 
 def _prefix_doc_with_id(doc: Document) -> Document:
     """Nhét JOB_ID/TITLE/URL vào đầu page_content và RÚT GỌN content để Gemini xử lý nhanh hơn."""
-    mid = doc.metadata or {}
+    mid = doc.metadata or {} # type: ignore
     job_id = mid.get("job_id", "")
     job_title = mid.get("job_title", "")
     job_url = mid.get("job_url", "")
     # Rút gọn content: chỉ lấy 800 ký tự đầu (đủ cho matching)
-    content = doc.page_content or ""
+    content = doc.page_content or "" # type: ignore
     if len(content) > 800:
         content = content[:800] + "..."
     header = f"JOB_ID: {job_id}\nJOB_TITLE: {job_title}\nJOB_URL: {job_url}\n-----\n"
-    doc.page_content = header + content
+    doc.page_content = header + content # type: ignore
     return doc
 
 def verify_job_id_consistency(job_id: int) -> bool:
     try:
+        from langchain_core.documents import Document  # type: ignore
+        from .chroma_utils import get_vectorstore
+
         with get_db_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('''

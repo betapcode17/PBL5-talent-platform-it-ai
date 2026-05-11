@@ -1,31 +1,35 @@
 # app/services/backend_api_client.py
-"""
-Backend API Client - Handles communication with NestJS backend
-"""
+"""Backend API client utilities for the NestJS backend."""
+
+from __future__ import annotations
 
 import logging
-import httpx # type: ignore
-from typing import Dict, Any, Optional, List
+from typing import Any, Dict, List, Optional
+
+import httpx  # type: ignore
+
 from app.config import BACKEND_API_URL
 
 logger = logging.getLogger(__name__)
 
 
 class BackendAPIClient:
-    """Client for calling NestJS backend APIs"""
-    
+    """Client for calling NestJS backend APIs."""
+
     def __init__(self, base_url: str = BACKEND_API_URL, timeout: float = 30.0):
-        """
-        Initialize Backend API Client
-        
-        Args:
-            base_url: Base URL of the NestJS backend (e.g., http://localhost:4000)
-            timeout: Request timeout in seconds
-        """
-        self.base_url = base_url.rstrip('/')
+        self.base_url = base_url.rstrip("/")
         self.timeout = timeout
-        logger.info(f" BackendAPIClient initialized with base_url: {self.base_url}")
-    
+        self._client: Optional[httpx.AsyncClient] = None
+        logger.info("BackendAPIClient initialized with base_url=%s", self.base_url)
+
+    def _get_client(self) -> httpx.AsyncClient:
+        if self._client is None:
+            self._client = httpx.AsyncClient(
+                timeout=httpx.Timeout(self.timeout, connect=min(10.0, self.timeout)),
+                follow_redirects=True,
+            )
+        return self._client
+
     async def _make_request(
         self,
         method: str,
@@ -34,66 +38,37 @@ class BackendAPIClient:
         json_data: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
-        """
-        Make HTTP request to backend
-        
-        Args:
-            method: HTTP method (GET, POST, etc.)
-            endpoint: API endpoint (e.g., /jobs/search)
-            params: Query parameters
-            json_data: JSON body data
-            headers: Custom headers
-            
-        Returns:
-            Response JSON
-        """
         url = f"{self.base_url}{endpoint}"
-        
+
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.request(
-                    method=method,
-                    url=url,
-                    params=params,
-                    json=json_data,
-                    headers=headers or {}
-                )
-                
-                # Log request
-                logger.debug(f"[Backend API] {method} {endpoint} -> Status {response.status_code}")
-                
-                # Handle errors
-                if response.status_code >= 400:
-                    logger.error(
-                        f"Backend API error: {response.status_code} - {response.text}"
-                    )
-                    return {
-                        "error": f"Backend error: {response.status_code}",
-                        "status": "failed",
-                        "details": response.text[:200]
-                    }
-                
-                return response.json()
-        
+            response = await self._get_client().request(
+                method=method,
+                url=url,
+                params=params,
+                json=json_data,
+                headers=headers or {},
+            )
+            logger.debug("[Backend API] %s %s -> %s", method, endpoint, response.status_code)
+
+            if response.status_code >= 400:
+                logger.error("Backend API error %s for %s: %s", response.status_code, endpoint, response.text)
+                return {
+                    "error": f"Backend error: {response.status_code}",
+                    "status": "failed",
+                    "details": response.text[:500],
+                }
+
+            return response.json()
         except httpx.TimeoutException:
-            logger.error(f"Backend API timeout for {endpoint}")
-            return {
-                "error": "Request timeout",
-                "status": "failed"
-            }
+            logger.error("Backend API timeout for %s", endpoint)
+            return {"error": "Request timeout", "status": "failed"}
         except httpx.ConnectError:
-            logger.error(f"Cannot connect to backend at {self.base_url}")
-            return {
-                "error": "Cannot connect to backend",
-                "status": "failed"
-            }
+            logger.error("Cannot connect to backend at %s", self.base_url)
+            return {"error": "Cannot connect to backend", "status": "failed"}
         except Exception as e:
-            logger.error(f"Backend API request failed: {e}")
-            return {
-                "error": str(e),
-                "status": "failed"
-            }
-    
+            logger.error("Backend API request failed for %s: %s", endpoint, e)
+            return {"error": str(e), "status": "failed"}
+
     async def search_jobs(
         self,
         query: Optional[str] = None,
@@ -103,136 +78,75 @@ class BackendAPIClient:
         page: int = 1,
         limit: int = 20,
     ) -> Dict[str, Any]:
-        """
-        Search jobs from backend
-        
-        Args:
-            query: Search query string (optional)
-            category: Job category filter
-            location: Location filter
-            salary_min: Minimum salary filter
-            page: Page number (1-indexed)
-            limit: Results per page
-            
-        Returns:
-            {
-                "jobs": [...],
-                "total": <int>,
-                "page": <int>,
-                "limit": <int>
-            }
-        """
-        # Decide which endpoint to use based on filters
         has_filters = category or location or salary_min
         has_query = query and query.strip()
-        
+
         params = {
             "page": page,
             "limit": limit,
         }
-        
-        # If no query and no filters, use /jobs endpoint (list all jobs)
+
         if not has_query and not has_filters:
             endpoint = "/jobs"
         else:
-            # Use /jobs/search for filtered queries
             endpoint = "/jobs/search"
-            
-            # Only add query if not empty
             if has_query:
-                params["q"] = query
-        
-        # Add filters
+                params["q"] = query # type: ignore
+
         if category:
-            params["category"] = category
+            params["category"] = category # type: ignore
         if location:
-            params["location"] = location
+            params["location"] = location # type: ignore
         if salary_min:
-            params["salaryMin"] = salary_min
-        
+            params["salaryMin"] = salary_min # type: ignore
+
         result = await self._make_request("GET", endpoint, params=params)
-        
-        # Transform response if needed
         if "error" not in result:
-            # Backend returns structured data, pass through
-            logger.info(f"Search found {result.get('total', 0)} jobs")
-        
+            logger.info("Search found %s jobs", result.get("total", 0))
+
         return result
-    
+
     async def get_job_details(self, job_id: int) -> Dict[str, Any]:
-        """
-        Get job details from backend
-        
-        Args:
-            job_id: Job ID
-            
-        Returns:
-            Job details object
-        """
         result = await self._make_request("GET", f"/jobs/{job_id}")
-        
         if "error" in result:
-            logger.warning(f"Failed to get job details for job_id={job_id}")
-        
+            logger.warning("Failed to get job details for job_id=%s", job_id)
         return result
-    
+
     async def get_company_jobs(
         self,
         company_id: int,
         page: int = 1,
         limit: int = 10,
     ) -> Dict[str, Any]:
-        """
-        Get jobs from specific company
-        
-        Args:
-            company_id: Company ID
-            page: Page number
-            limit: Results per page
-            
-        Returns:
-            Jobs list and pagination info
-        """
-        params = {
-            "page": page,
-            "limit": limit,
-        }
-        
-        result = await self._make_request(
-            "GET",
-            f"/jobs/company/{company_id}",
-            params=params
-        )
-        
-        return result
-    
+        params = {"page": page, "limit": limit}
+        return await self._make_request("GET", f"/jobs/company/{company_id}", params=params)
+
     async def get_all_jobs(
         self,
         page: int = 1,
         limit: int = 20,
         active_only: bool = True,
     ) -> Dict[str, Any]:
-        """
-        Get all jobs with optional filters
-        
-        Args:
-            page: Page number
-            limit: Results per page
-            active_only: Only active jobs
-            
-        Returns:
-            Jobs list and pagination info
-        """
-        params = {
-            "page": page,
-            "limit": limit,
-            "active": active_only,
-        }
-        
-        result = await self._make_request("GET", "/jobs", params=params)
-        
-        return result
-    
+        params = {"page": page, "limit": limit, "active": active_only}
+        return await self._make_request("GET", "/jobs", params=params)
+
+    async def get_all_companies(self, page: int = 1, query: Optional[str] = None) -> Dict[str, Any]:
+        params: Dict[str, Any] = {"page": page}
+        if query:
+            params["q"] = query
+        return await self._make_request("GET", "/companies", params=params)
+
+    async def get_company_details(self, company_id: int) -> Dict[str, Any]:
+        return await self._make_request("GET", f"/companies/{company_id}")
+
+    async def get_backend_health(self) -> Dict[str, Any]:
+        return await self._make_request("GET", "/")
+
+    async def close(self) -> None:
+        if self._client is not None:
+            await self._client.aclose()
+            self._client = None
+
     async def create_job(
         self,
         title: str,
@@ -243,21 +157,6 @@ class BackendAPIClient:
         salary_range: Dict[str, int],
         requirements: List[str],
     ) -> Dict[str, Any]:
-        """
-        Create new job posting (admin only)
-        
-        Args:
-            title: Job title
-            description: Job description
-            category_id: Category ID
-            job_type_id: Job type ID
-            company_id: Company ID
-            salary_range: {"min": <int>, "max": <int>}
-            requirements: List of requirements
-            
-        Returns:
-            Created job object
-        """
         json_data = {
             "title": title,
             "description": description,
@@ -267,10 +166,7 @@ class BackendAPIClient:
             "salaryRange": salary_range,
             "requirements": requirements,
         }
-        
-        result = await self._make_request("POST", "/jobs", json_data=json_data)
-        
-        return result
+        return await self._make_request("POST", "/jobs", json_data=json_data)
 
 
 # Singleton instance

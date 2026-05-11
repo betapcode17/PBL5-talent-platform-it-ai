@@ -1,8 +1,6 @@
 import os
-import pdfplumber
 import re
 import json
-from tenacity import retry, stop_after_attempt, wait_exponential
 from fastapi import HTTPException
 import logging
 
@@ -13,6 +11,8 @@ def extract_text_from_pdf(pdf_path: str) -> str:
     if not os.path.exists(pdf_path) or os.path.getsize(pdf_path) == 0:
         raise HTTPException(status_code=400, detail="PDF file is empty or does not exist")
     try:
+        import pdfplumber
+
         text = ""
         with pdfplumber.open(pdf_path) as pdf:
             for page in pdf.pages:

@@ -11,13 +11,6 @@ import logging
 from pathlib import Path
 from typing import List
 from app.services.db_utils import create_tables, get_db_connection
-from app.services.pg_database import get_all_jobs
-from langchain_core.documents import Document # type: ignore
-from langchain_chroma import Chroma
-from langchain_ollama import OllamaEmbeddings
-import pandas as pd  # Fixed: import pandas as pd (not from turtle)
-
-import logging
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -25,7 +18,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 _job_vectorstore = None
 _cv_vectorstore = None
 
-def get_vectorstore(collection_name: str = "jobs") -> Chroma:
+def get_vectorstore(collection_name: str = "jobs"):
     """
     Khởi tạo Chroma vectorstore với Google Gemini Embedding API.
     Separate collections: "jobs" (default), "cvs" for reverse matching.
@@ -42,9 +35,12 @@ def get_vectorstore(collection_name: str = "jobs") -> Chroma:
             _job_vectorstore = _initialize_vectorstore("jobs")
         return _job_vectorstore
 
-def _initialize_vectorstore(collection_name: str) -> Chroma:
+def _initialize_vectorstore(collection_name: str):
     """Internal init for a specific collection using local Ollama embeddings."""
     try:
+        from langchain_chroma import Chroma
+        from langchain_ollama import OllamaEmbeddings
+
         base_dir = Path(__file__).resolve().parent.parent  # app/ -> root
         chroma_path = base_dir / "db" / "chroma_db" / collection_name
         chroma_path.mkdir(parents=True, exist_ok=True)
@@ -70,6 +66,8 @@ def _initialize_vectorstore(collection_name: str) -> Chroma:
         logging.info(f"ℹ Attempting to load existing ChromaDB without re-embedding...")
         
         try:
+            from langchain_chroma import Chroma
+
             base_dir = Path(__file__).resolve().parent.parent
             chroma_path = base_dir / "db" / "chroma_db" / collection_name
             
@@ -91,6 +89,9 @@ def preload_jobs(csv_path: str, batch_size: int = 1000) -> bool:
     Accepts both str and Path.
     """
     try:
+        from langchain_core.documents import Document  # type: ignore
+        import pandas as pd
+
         csv_path = Path(csv_path) # type: ignore
 
         if not csv_path.exists(): # type: ignore
@@ -222,6 +223,8 @@ async def index_cv_extracts(skills: list, aspirations: str, experience: str, edu
     if not isinstance(cv_id, int):
         raise ValueError("cv_id must be an integer")
     try:
+        from langchain_core.documents import Document  # type: ignore
+
         content = (
             f"CV_ID: {cv_id}\n"  # Prefix for prompt (similar to JOB_ID)
             f"Skills: {json.dumps(skills, ensure_ascii=False)} "
@@ -275,6 +278,9 @@ def preload_jobs_from_pg(batch_size: int = 20, force: bool = False) -> bool:
     """
     import time
     try:
+        from langchain_core.documents import Document  # type: ignore
+        from app.services.pg_database import get_all_jobs
+
         vectorstore = get_vectorstore("jobs")
 
         # Check if already populated

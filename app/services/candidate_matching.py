@@ -8,7 +8,6 @@ Currently disabled - use rag_matching.py for job matching instead.
 import json
 import logging
 from typing import List, Dict, Any
-from langchain_core.documents import Document # type: ignore
 
 from app.models.core import CandidateSearchInput, CandidateSearchResponse, MatchedCandidate, Suggestion
 from .chroma_utils import get_vectorstore

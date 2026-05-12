@@ -5,6 +5,8 @@ Stores conversations and messages in MongoDB (Atlas Cloud).
 Replaces PostgreSQL storage with MongoDB NoSQL storage.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 import uuid
@@ -12,8 +14,12 @@ import os
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 
-from pymongo import MongoClient
-from pymongo.errors import ServerSelectionTimeoutError, ConnectionFailure
+try:
+    from pymongo import MongoClient
+    from pymongo.errors import ServerSelectionTimeoutError, ConnectionFailure
+except ImportError:  # pragma: no cover - optional runtime dependency
+    MongoClient = None  # type: ignore[assignment]
+    ServerSelectionTimeoutError = ConnectionFailure = Exception  # type: ignore[assignment]
 
 from app.config import MONGODB_URL, MONGODB_DATABASE
 from app.models.chatbot import Conversation, ConversationMessage
@@ -21,7 +27,7 @@ from app.models.chatbot import Conversation, ConversationMessage
 logger = logging.getLogger(__name__)
 
 # MongoDB Client (Global connection pool)
-_client: Optional[MongoClient] = None
+_client: Optional[Any] = None
 _db = None
 
 
@@ -29,6 +35,11 @@ def _get_db():
     """Get MongoDB database instance with connection pooling."""
     global _client, _db
     if _db is None:
+        if MongoClient is None:
+            logger.warning("[WARNING] pymongo not installed; using in-memory mock storage")
+            _db = MockDB()
+            return _db
+
         try:
             _client = MongoClient(
                 MONGODB_URL,
@@ -36,7 +47,7 @@ def _get_db():
                 socketTimeoutMS=5000,
                 connectTimeoutMS=5000,
                 retryWrites=False,
-                tlsAllowInvalidCertificates=True,  # Skip SSL verification for testing
+                tlsAllowInvalidCertificates=os.getenv("MONGODB_ALLOW_INVALID_CERTIFICATES", "false").lower() == "true",
             )
             # Verify connection
             _client.admin.command('ping')
@@ -55,31 +66,90 @@ def _get_db():
 
 class MockDB:
     """Mock MongoDB for testing without real MongoDB."""
+    def __init__(self):
+        self._collections: Dict[str, MockCollection] = {}
+
     def __getitem__(self, key):
-        return MockCollection()
+        if key not in self._collections:
+            self._collections[key] = MockCollection()
+        return self._collections[key]
 
 
 class MockCollection:
-    """Mock collection that logs operations."""
+    """In-memory collection with a subset of pymongo behavior."""
+
+    def __init__(self):
+        self.docs: List[Dict[str, Any]] = []
+
     def insert_one(self, doc):
+        self.docs.append(dict(doc))
         logger.info(f"[MOCK] Inserted message: {doc.get('id', 'unknown')}")
         return type('Result', (), {'inserted_id': doc.get('_id')})()
     
     def find_one(self, query):
-        logger.info(f"[MOCK] Query one: {query}")
+        for doc in self.docs:
+            if all(doc.get(k) == v for k, v in query.items()):
+                return dict(doc)
         return None
     
     def find(self, query=None):
-        logger.info(f"[MOCK] Find: {query or {}}")
-        return iter([])
+        matched = [
+            dict(doc)
+            for doc in self.docs
+            if all(doc.get(k) == v for k, v in (query or {}).items())
+        ]
+        return MockCursor(matched)
     
     def update_one(self, filter_q, update_doc):
-        logger.info(f"[MOCK] Update: {filter_q}")
-        return type('Result', (), {'modified_count': 1})()
+        modified = 0
+        for doc in self.docs:
+            if all(doc.get(k) == v for k, v in filter_q.items()):
+                if "$set" in update_doc:
+                    doc.update(update_doc["$set"])
+                modified += 1
+                break
+        return type('Result', (), {'modified_count': modified})()
+
+    def delete_one(self, query):
+        deleted = 0
+        for idx, doc in enumerate(self.docs):
+            if all(doc.get(k) == v for k, v in query.items()):
+                self.docs.pop(idx)
+                deleted = 1
+                break
+        return type('Result', (), {'deleted_count': deleted})()
+
+    def delete_many(self, query):
+        kept = []
+        deleted = 0
+        for doc in self.docs:
+            if all(doc.get(k) == v for k, v in query.items()):
+                deleted += 1
+            else:
+                kept.append(doc)
+        self.docs = kept
+        return type('Result', (), {'deleted_count': deleted})()
     
     def create_index(self, keys):
         logger.info(f"[MOCK] Index: {keys}")
         return None
+
+
+class MockCursor:
+    def __init__(self, docs: List[Dict[str, Any]]):
+        self.docs = docs
+
+    def sort(self, key: str, direction: int):
+        reverse = direction == -1
+        self.docs.sort(key=lambda doc: doc.get(key) or datetime.min, reverse=reverse)
+        return self
+
+    def limit(self, limit: int):
+        self.docs = self.docs[:limit]
+        return self
+
+    def __iter__(self):
+        return iter(self.docs)
 
 
 def _create_indexes():
@@ -157,8 +227,8 @@ def get_conversations(seeker_id: Optional[int] = None, limit: int = 50) -> List[
                 id=doc["id"],
                 title=doc.get("title", ""),
                 lastMessage=doc.get("last_message"),
-                createdAt=doc.get("created_at"),
-                updateAt=doc.get("updated_at"),
+                createdAt=doc.get("created_at"), # type: ignore
+                updateAt=doc.get("updated_at"), # type: ignore
             )
             for doc in docs
         ]
@@ -181,8 +251,8 @@ def get_conversation(conv_id: str) -> Optional[Conversation]:
             id=doc["id"],
             title=doc.get("title", ""),
             lastMessage=doc.get("last_message"),
-            createdAt=doc.get("created_at"),
-            updateAt=doc.get("updated_at"),
+            createdAt=doc.get("created_at"), # type: ignore
+            updateAt=doc.get("updated_at"), # type: ignore
         )
     except Exception as e:
         logger.error(f"[ERROR] Error getting conversation: {e}")
@@ -202,7 +272,7 @@ def delete_conversation(conv_id: str) -> bool:
         # Delete the conversation
         result = conversations.delete_one({"_id": conv_id})
         
-        deleted = result.deleted_count > 0
+        deleted = result.deleted_count > 0 # type: ignore
         if deleted:
             logger.info(f"[OK] Deleted conversation: {conv_id}")
         return deleted
@@ -305,7 +375,7 @@ def get_messages(conversation_id: str, limit: int = 100) -> List[ConversationMes
                 conversationId=doc["conversation_id"],
                 role=doc["role"],
                 content=doc["content"],
-                createdAt=doc.get("created_at"),
+                createdAt=doc.get("created_at"), # type: ignore
                 sources=doc.get("sources"),
                 detectedIntent=doc.get("detected_intent"),
             )
@@ -371,7 +441,7 @@ def rename_conversation(conv_id: str, new_title: str) -> Optional[Conversation]:
             id=doc["id"],
             title=new_title,
             lastMessage=doc.get("last_message"),
-            createdAt=doc.get("created_at"),
+            createdAt=doc.get("created_at"), # type: ignore
             updateAt=now,
         )
     except Exception as e:

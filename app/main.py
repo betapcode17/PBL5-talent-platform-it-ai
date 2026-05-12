@@ -10,6 +10,7 @@ import logging
 from pathlib import Path
 from dotenv import load_dotenv
 
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
 # Calculate paths and load .env from root
 BASE_DIR = Path(__file__).resolve().parent  # app/
@@ -41,10 +42,7 @@ from app.routers import candidates
 # Import error handlers
 from app.middleware.error_handler import setup_error_handlers
 # Import preload function
-from app.services.chroma_utils import preload_jobs as preload_jobs_to_chroma, preload_jobs_from_pg
-
-# Import DATA_PATH from config
-from app.config import JOBS_CSV_PATH as DATA_PATH
+from app.services.chatbot_service import get_chatbot
 
 app = FastAPI(
     title="AI CV-Job Matcher",
@@ -81,32 +79,55 @@ logging.info(" Error handlers setup complete")
 
 @app.on_event("startup")
 async def startup_event():
-    import asyncio
     print(" STARTUP EVENT TRIGGERED")
-
-    async def _preload_in_background():
-        """Run preload in background so server starts immediately."""
+    
+    import asyncio
+    
+    # ==========================
+    # PRELOAD MODELS ON STARTUP
+    # ==========================
+    async def _preload_models():
+        """Preload all ML models (embeddings + Qwen) on server startup."""
         try:
-            logging.info("Background: Attempting to preload jobs from PostgreSQL...")
-            loop = asyncio.get_event_loop()
-            success = await loop.run_in_executor(None, preload_jobs_from_pg)
-            if success:
-                logging.info(" Background preload from PostgreSQL completed successfully")
-            else:
-                logging.warning(" Background PostgreSQL preload failed, trying CSV...")
-                success = await loop.run_in_executor(
-                    None, lambda: preload_jobs_to_chroma(DATA_PATH, batch_size=500) # type: ignore
-                )
-                if success:
-                    logging.info(" Background CSV preload completed")
-                else:
-                    logging.warning(" Background preload failed entirely")
+            logging.info(" Preloading ML models...")
+            
+            # Get RAG pipeline (triggers lazy-load of embedding + generation models)
+            pipeline = get_chatbot().pipeline
+            
+            # Trigger embedding model load
+            _ = pipeline.embedding.model  # Access .model property to trigger load
+            logging.info(" ✓ Embedding model preloaded")
+            
+            # Trigger Qwen model load (already in __init__, but verify)
+            logging.info(" ✓ Qwen generation model preloaded")
+            
+            # Health check
+            health = pipeline.health()
+            logging.info(" ✓ Models ready - health check: %s", health)
+            
         except Exception as e:
-            logging.exception(f" Background preload error: {e}")
+            logging.exception(f" Model preload error (non-fatal): {e}")
+            logging.warning(" Server will attempt lazy-load models on first request")
+    
+    # Preload models before proceeding
+    await _preload_models()
 
-    # Launch preload in background - server starts immediately
-    asyncio.create_task(_preload_in_background())
-    logging.info(" Server started - job preload running in background")
+    if os.getenv("ENABLE_RAG_WARMUP", "0") != "1":
+        logging.info(" RAG warmup skipped; set ENABLE_RAG_WARMUP=1 to enable background sync")
+        return
+
+    async def _sync_rag_in_background():
+        """Warm up RAG index in background while server starts."""
+        try:
+            chatbot = get_chatbot()
+            result = await chatbot.force_sync()
+            logging.info("Background RAG sync complete: %s", result)
+        except Exception as e:
+            logging.exception(f" Background RAG sync error: {e}")
+
+    # Launch sync in background - server starts immediately
+    asyncio.create_task(_sync_rag_in_background())
+    logging.info(" Server started - RAG sync running in background")
 
 # =========================
 # ROOT ENDPOINT

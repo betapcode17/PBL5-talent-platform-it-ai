@@ -144,13 +144,26 @@ class SendMessageResponse(BaseModel):
     message: ConversationMessage
     conversationId: str
     version: str = "1.0.0"
+    rag: Optional[Dict[str, Any]] = None
     services: Dict[str, bool] = Field(
         default_factory=lambda: {
             "chroma": True,
-            "ollama": True,
+            "qwen": True,
             "database": True
         }
     )
+
+
+class QueryRequest(BaseModel):
+    """JSON request model for RAG query testing."""
+    message: str = Field(..., min_length=1, max_length=4000)
+    conversationId: Optional[str] = None
+    extraContext: Optional[str] = None
+
+
+class ReloadRAGRequest(BaseModel):
+    """Request model for manual RAG reload/reindex."""
+    force: bool = Field(default=True, description="Force fetch latest data from backend and rebuild index")
 
 
 class RenameConversationRequest(BaseModel):

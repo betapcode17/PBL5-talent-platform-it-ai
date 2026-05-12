@@ -1,173 +1,166 @@
-# app/routers/chatbot.py
-"""
-Chatbot Endpoints - FastAPI routes for RAG chatbot.
-Provides REST API for chat interactions.
-"""
+"""Chatbot routes powered by a pure RAG pipeline."""
+
+from __future__ import annotations
 
 import logging
-from fastapi import APIRouter, HTTPException, Query, UploadFile, File, Form, Request  # type: ignore
-from typing import Optional, List
+from typing import List, Optional
 
-from app.services.chatbot_service import get_chatbot, get_tool_aware_chatbot
-from app.services import conversation_service
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+
 from app.models.chatbot import (
+    Conversation,
+    ConversationMessage,
     HealthCheckResponse,
-    Conversation, ConversationMessage, SendMessageRequest, SendMessageResponse,
-    RenameConversationRequest, RenameConversationResponse,
+    QueryRequest,
+    ReloadRAGRequest,
+    RenameConversationRequest,
+    RenameConversationResponse,
+    SendMessageResponse,
 )
-from app.utils.pdf_parser import extract_text_from_pdf
-from app.services.db_utils import insert_cv_record
-import os
-import tempfile
+from app.services import conversation_service
+from app.services.chatbot_service import get_chatbot
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(
-    prefix="/chatbot",
-    tags=["chatbot"],
-    responses={404: {"description": "Not found"}},
-)
-
+router = APIRouter(prefix="/chatbot", tags=["chatbot"], responses={404: {"description": "Not found"}})
 
 
 @router.get("/health", response_model=HealthCheckResponse)
 async def health_check() -> HealthCheckResponse:
-    """
-    Health check endpoint
-    
-    Response:
-    ```json
-    {
-        "status": "ok",
-        "timestamp": "...",
-        "version": "1.0.0",
-        "services": {
-            "chroma": true,
-            "ollama": true,
-            "database": true
-        }
-    }
-    ```
-    """
     try:
-        # Check each service quickly
-        chatbot = get_chatbot()
-        
-        # If we got here, services are working
-        return HealthCheckResponse(
-            status="ok",
-            services={ # type: ignore
-                "chroma": True,
-                "ollama": True,
-                "database": True
-            }
-        )
-        
-    except Exception as e:
-        logger.error(f" Health check failed: {e}")
-        return HealthCheckResponse(
-            status="error",
-            services={ # type: ignore
-                "chroma": False,
-                "ollama": False,
-                "database": False
-            }
-        )
+        service = get_chatbot()
+        details = service.health()
+        logger.info("Chatbot health: %s", details)
+        return HealthCheckResponse(status="ok")
+    except Exception as exc:
+        logger.exception("Health check failed: %s", exc)
+        return HealthCheckResponse(status="error")
 
 
 @router.get("/info")
-async def get_chat_info():
-    """
-    Get chatbot information
-    
-    Response:
-    ```json
-    {
-        "version": "1.0.0",
-        "name": "RAG CV-Job Chatbot",
-        "description": "...",
-        "context_types": ["jobs", "cv", "matching", "career"],
-        "features": [...]
-    }
-    ```
-    """
+async def get_chat_info() -> dict:
     return {
-        "version": "1.0.0",
-        "name": "RAG CV-Job Chatbot",
-        "description": "AI-powered chatbot for job matching and CV improvement",
-        "context_types": ["jobs", "cv", "matching", "career"],
-        "features": [
-            "RAG (Retrieval-Augmented Generation)",
-            "Multi-context conversations",
-            "Chat history management",
-            "Job-CV matching",
-            "Career advice",
-            "Real-time document retrieval"
-        ],
-        "collection_types": ["jobs", "cvs"],
-        "model": "Ollama (Local LLM)"
+        "version": "2.0.0",
+        "name": "RAG Job Chatbot",
+        "description": "Pure RAG chatbot with backend API ingestion + Chroma retrieval + Qwen generation",
+        "pipeline": ["ingestion", "embedding", "retrieval", "generation"],
+        "llm": "Qwen (Transformers, CUDA)",
+        "vectorStore": "ChromaDB",
+        "realtimeSync": "auto on interval + manual /chatbot/sync",
     }
 
 
+@router.post("/sync")
+async def force_rag_sync() -> dict:
+    try:
+        service = get_chatbot()
+        return await service.force_sync()
+    except Exception as exc:
+        logger.exception("Manual sync failed: %s", exc)
+        raise HTTPException(status_code=500, detail=f"RAG sync failed: {exc}")
+
+
+@router.post("/reload")
+async def reload_rag_from_backend(req: ReloadRAGRequest) -> dict:
+    """Fetch latest jobs/companies from backend and rebuild the RAG index."""
+    try:
+        service = get_chatbot()
+        result = await service.pipeline.ensure_index_fresh(force=req.force)
+        return {
+            "success": True,
+            "message": "RAG data reloaded from backend successfully",
+            "reload": result,
+        }
+    except Exception as exc:
+        logger.exception("Manual reload failed: %s", exc)
+        raise HTTPException(status_code=500, detail=f"RAG reload failed: {exc}")
+
+
+@router.get("/sync/status")
+async def get_rag_sync_status() -> dict:
+    try:
+        service = get_chatbot()
+        return service.health()
+    except Exception as exc:
+        logger.exception("Sync status failed: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.post("/query")
+async def query_rag(req: QueryRequest) -> dict:
+    try:
+        service = get_chatbot()
+        if req.conversationId:
+            conv = conversation_service.get_conversation(req.conversationId)
+            if not conv:
+                raise HTTPException(status_code=404, detail="Conversation not found")
+            conversation_id = conv.id
+        else:
+            conv = conversation_service.create_conversation(title=req.message[:50])
+            conversation_id = conv.id
+
+        conversation_service.add_message(conversation_id=conversation_id, role="user", content=req.message)
+        rag_result = await service.chat(
+            user_message=req.message,
+            conversation_id=conversation_id,
+            extra_context=req.extraContext,
+        )
+        assistant_msg = conversation_service.add_message(
+            conversation_id=conversation_id,
+            role="assistant",
+            content=rag_result["bot_response"],
+            sources=rag_result.get("sources"),
+            detected_intent=rag_result.get("detected_intent"),
+        )
+        return {
+            "message": assistant_msg,
+            "conversationId": conversation_id,
+            "rag": {
+                "sources": rag_result.get("sources", []),
+                "sync": rag_result.get("sync", {}),
+                "retrieval": rag_result.get("retrieval", {}),
+                "generation": rag_result.get("generation", {}),
+                "latencyMs": rag_result.get("latencyMs"),
+                "promptPreview": rag_result.get("promptPreview"),
+            },
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("query_rag failed: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.get("/retrieval-debug")
+async def retrieval_debug(query: str) -> dict:
+    try:
+        service = get_chatbot()
+        return await service.pipeline.retrieval_debug(query)
+    except Exception as exc:
+        logger.exception("retrieval_debug failed: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.get("/indexed-jobs")
+async def list_indexed_jobs(page: int = 1, limit: int = 20) -> dict:
+    """List unique jobs currently present in the RAG Chroma index."""
+    try:
+        service = get_chatbot()
+        return await service.pipeline.list_indexed_jobs(page=page, limit=limit)
+    except Exception as exc:
+        logger.exception("list_indexed_jobs failed: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @router.post("/message")
 async def send_chat_message(
-    message: str = Form(...),
-    conversationId: Optional[str] = Form(None),
-    attachments: Optional[List[UploadFile]] = File(None),  # 🔥 FIX QUAN TRỌNG
-):
+    message: str = Form(..., description="Nội dung tin nhắn (bắt buộc)"),
+    conversationId: Optional[str] = Form(None, description="ID cuộc hội thoại (tùy chọn)"),
+    extraContext: Optional[str] = Form(None, description="Context từ CV hoặc tài liệu (tùy chọn, dạng text)"),
+) -> SendMessageResponse:
     try:
-        logger.info(f"[DEBUG] message={message}, conversationId={conversationId}")
+        service = get_chatbot()
 
-        file_ids = []
-
-     
-        attachments = attachments or []
-
-        logger.info(f"[FILE] Attachments received: {len(attachments)} items")
-
-        for file in attachments:
-            if not file.filename:
-                continue
-
-            if not file.filename.lower().endswith(".pdf"):
-                logger.warning(f"[FILE] Skip non-PDF: {file.filename}")
-                continue
-
-            try:
-                file_data = await file.read()
-
-                if len(file_data) > 10 * 1024 * 1024:
-                    logger.warning(f"[FILE] Too large: {file.filename}")
-                    continue
-
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-                    tmp.write(file_data)
-                    temp_path = tmp.name
-
-                logger.info(f"[FILE] Saved: {temp_path}")
-
-                # Debug PDF content
-                try:
-                    text = extract_text_from_pdf(temp_path)
-                    logger.info(f"[PDF] Content preview: {text[:300]}")
-                except Exception as e:
-                    logger.warning(f"[PDF] Read error: {e}")
-
-                file_ids.append(temp_path)
-
-            except Exception as e:
-                logger.error(f"[FILE ERROR] {file.filename}: {e}")
-
-        logger.info(f"[FILE] Final file_ids: {file_ids}")
-
-        # =============================
-        # ✅ CHATBOT
-        # =============================
-        chatbot = get_tool_aware_chatbot()
-
-        # Create / get conversation
         if conversationId:
             conv = conversation_service.get_conversation(conversationId)
             if not conv:
@@ -177,76 +170,70 @@ async def send_chat_message(
             conv = conversation_service.create_conversation(title=message[:50])
             conversation_id = conv.id
 
-        # Save user message
+        # extraContext được pass trực tiếp từ client (client tự extract PDF nếu cần)
+
         conversation_service.add_message(
             conversation_id=conversation_id,
             role="user",
             content=message,
         )
 
-        # Call chatbot
-        result = await chatbot.chat_with_tools(
+        rag_result = await service.chat(
             user_message=message,
             conversation_id=conversation_id,
-            file_ids=file_ids if file_ids else None,
+            extra_context=extraContext,
         )
 
-        # Save bot message
         assistant_msg = conversation_service.add_message(
             conversation_id=conversation_id,
             role="assistant",
-            content=result["bot_response"],
-            sources=result.get("sources"),
-            detected_intent=result.get("detected_intent"),
+            content=rag_result["bot_response"],
+            sources=rag_result.get("sources"),
+            detected_intent=rag_result.get("detected_intent"),
         )
-
-        if not assistant_msg:
-            raise HTTPException(status_code=500, detail="Không lưu được tin nhắn")
 
         return SendMessageResponse(
             message=assistant_msg,
             conversationId=conversation_id,
+            rag={
+                "sources": rag_result.get("sources", []),
+                "sync": rag_result.get("sync", {}),
+                "retrieval": rag_result.get("retrieval", {}),
+                "generation": rag_result.get("generation", {}),
+                "latencyMs": rag_result.get("latencyMs"),
+            },
         )
+
 
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"[ERROR] send_chat_message: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as exc:
+        logger.exception("send_chat_message failed: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
 
 
 @router.get("/conversation", response_model=List[Conversation])
 async def list_conversations() -> List[Conversation]:
-    """
-    List all AI chatbot conversations, most recent first.
-    Maps to frontend: getConversationsApi
-    """
     try:
         return conversation_service.get_conversations()
-    except Exception as e:
-        logger.error(f"Error listing conversations: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as exc:
+        logger.error("Error listing conversations: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @router.post("/conversation", response_model=Conversation)
 async def create_conversation_endpoint() -> Conversation:
-    """
-    Create a new empty conversation.
-    Maps to frontend: createConversationApi
-    """
     try:
-        return conversation_service.create_conversation(title="Cuộc trò chuyện mới")
-    except Exception as e:
-        logger.error(f"Error creating conversation: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return conversation_service.create_conversation(title="Cuoc tro chuyen moi")
+    except Exception as exc:
+        logger.error("Error creating conversation: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @router.get("/conversation/{conversation_id}/message", response_model=List[ConversationMessage])
 async def get_conversation_messages(conversation_id: str) -> List[ConversationMessage]:
-    """
-    Get all messages for a conversation.
-    Maps to frontend: getMessagesApi
-    """
     try:
         conv = conversation_service.get_conversation(conversation_id)
         if not conv:
@@ -254,17 +241,13 @@ async def get_conversation_messages(conversation_id: str) -> List[ConversationMe
         return conversation_service.get_messages(conversation_id)
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error getting messages: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as exc:
+        logger.error("Error getting messages: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @router.delete("/conversation/{conversation_id}")
-async def delete_conversation_endpoint(conversation_id: str):
-    """
-    Delete a conversation and all its messages.
-    Maps to frontend: deleteConversation
-    """
+async def delete_conversation_endpoint(conversation_id: str) -> dict:
     try:
         deleted = conversation_service.delete_conversation(conversation_id)
         if not deleted:
@@ -272,54 +255,26 @@ async def delete_conversation_endpoint(conversation_id: str):
         return {"success": True, "message": "Conversation deleted"}
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error deleting conversation: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as exc:
+        logger.error("Error deleting conversation: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @router.post("/conversation/rename", response_model=RenameConversationResponse)
 async def rename_conversation_endpoint(req: RenameConversationRequest) -> RenameConversationResponse:
-    """
-    Rename a conversation.
-    Maps to frontend: renameConversation
-    
-    Request:
-    ```json
-    {
-        "conversationId": "uuid-here",
-        "newTitle": "New conversation title"
-    }
-    ```
-    
-    Response:
-    ```json
-    {
-        "conversationId": "uuid-here",
-        "newTitle": "New conversation title",
-        "updatedAt": "2026-04-19T10:30:00.000Z",
-        "success": true,
-        "message": "Đã đổi tên đoạn chat thành công"
-    }
-    ```
-    """
     try:
-        updated_conv = conversation_service.rename_conversation(
-            conv_id=req.conversationId,
-            new_title=req.newTitle
-        )
-        
+        updated_conv = conversation_service.rename_conversation(conv_id=req.conversationId, new_title=req.newTitle)
         if not updated_conv:
             raise HTTPException(status_code=404, detail="Conversation not found")
-        
         return RenameConversationResponse(
             conversationId=req.conversationId,
             newTitle=req.newTitle,
             updatedAt=updated_conv.updateAt,
             success=True,
-            message="Đã đổi tên đoạn chat thành công"
+            message="Da doi ten doan chat thanh cong",
         )
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error renaming conversation: {e}")
-        raise HTTPException(status_code=500, detail=f"Lỗi đổi tên đoạn chat: {str(e)}")
+    except Exception as exc:
+        logger.error("Error renaming conversation: %s", exc)
+        raise HTTPException(status_code=500, detail=f"Loi doi ten doan chat: {exc}")

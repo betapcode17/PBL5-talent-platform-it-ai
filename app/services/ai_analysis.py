@@ -6,7 +6,6 @@ import json
 from typing import Dict, List, Optional, Any
 
 from app.services.llm_service import get_llm_service
-from app.prompts import cv_analysis_prompt, cv_improvement_prompt  # Import prompts
 
 # Get LLM service (Ollama or Gemini based on config)
 def get_llm():
@@ -26,6 +25,7 @@ async def analyze_cv_insights(cv_info: Dict) -> Dict[str, Any]:
     try:
         # Get LLM instance (works with both Ollama and Gemini)
         llm_instance = get_llm()
+        from app.prompts import cv_analysis_prompt
         
         # Format input for prompt
         formatted_input = {
@@ -48,7 +48,7 @@ async def analyze_cv_insights(cv_info: Dict) -> Dict[str, Any]:
         else:
             # Ollama path - use async wrapper
             response = await llm_instance.llm.ainvoke(prompt_text)
-            content = response.content.strip()
+            content = response.content.strip() # type: ignore
         
         # Remove markdown code blocks if present
         if content.startswith("```json"):
@@ -113,6 +113,7 @@ async def generate_cv_improvements(cv_info: Dict, insights: Dict) -> List[Dict[s
     try:
         # Get LLM instance (works with both Ollama and Gemini)
         llm_instance = get_llm()
+        from app.prompts import cv_improvement_prompt
         
         # Format input for prompt
         formatted_input = {
@@ -137,7 +138,7 @@ async def generate_cv_improvements(cv_info: Dict, insights: Dict) -> List[Dict[s
         else:
             # Ollama path - use async wrapper
             response = await llm_instance.llm.ainvoke(prompt_text)
-            content = response.content.strip()
+            content = response.content.strip() # type: ignore
 
         # Remove markdown code blocks
         if content.startswith("```json"):

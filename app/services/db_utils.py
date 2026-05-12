@@ -114,7 +114,7 @@ def create_tables():
 
         conn.commit()
 
-def insert_cv_record(filename: str, cv_info: Dict, file_data: bytes = None) -> int:
+def insert_cv_record(filename: str, cv_info: Dict, file_data: bytes = None) -> int: # type: ignore
     if not isinstance(cv_info, dict):
         raise ValueError("cv_info must be a dictionary")
     with get_db_connection() as conn:
@@ -127,7 +127,7 @@ def insert_cv_record(filename: str, cv_info: Dict, file_data: bytes = None) -> i
                            (filename, json.dumps(cv_info, ensure_ascii=False)))
         cv_id = cursor.lastrowid
         conn.commit()
-        return cv_id
+        return cv_id # type: ignore
 
 def insert_match_log(session_id: str, cv_id: int, matched_jobs: Dict) -> None:
     if not isinstance(session_id, str) or not session_id:
@@ -227,9 +227,9 @@ def insert_application(cv_id: int, job_id: int, cover_letter: str = "", status: 
                          VALUES (?, ?, ?, ?)''',
                       (cv_id, job_id, cover_letter, status))
         conn.commit()
-        return cursor.lastrowid
+        return cursor.lastrowid # type: ignore
 
-def get_applications_by_cv(cv_id: int, status: str = None) -> List[Dict]:
+def get_applications_by_cv(cv_id: int, status: str = None) -> List[Dict]: # type: ignore
     """Lấy danh sách applications của CV."""
     with get_db_connection() as conn:
         cursor = conn.cursor()

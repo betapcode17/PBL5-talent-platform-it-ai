@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 import logging
+import re
 import time
 from datetime import datetime, timezone
-from typing import Dict, List, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from app.services.backend_api_client import get_backend_client
 
 from .embedding import EmbeddingService
+from .fulltext_store import RAGFullTextStore
 from .schemas import ChunkRecord, CompanyRecord, JobRecord, SyncResult
 from .settings import (
     EMBED_BATCH_SIZE,
@@ -18,6 +20,7 @@ from .settings import (
     RAG_CHUNK_OVERLAP_CHARS,
     RAG_CHUNK_SIZE_CHARS,
     RAG_COMPANY_MAX_PAGES,
+    RAG_USE_FULLTEXT_SEARCH,
 )
 from .vector_store import RAGVectorStore
 
@@ -31,11 +34,13 @@ class RAGIngestionService:
         self.backend = get_backend_client()
         self.vector_store = vector_store
         self.embedding = embedding
+        self.fulltext_store = RAGFullTextStore() if RAG_USE_FULLTEXT_SEARCH else None
 
     async def sync_from_backend(self) -> SyncResult:
         start = time.perf_counter()
         errors: List[str] = []
         warnings: List[str] = []
+        logger.info("rag.ingest.begin")
 
         jobs, job_pages, job_errors = await self._fetch_jobs()
         companies, company_pages, company_errors = await self._fetch_companies()
@@ -54,12 +59,14 @@ class RAGIngestionService:
             previous_count = self.vector_store.reset_collection()
             stale_removed = previous_count
             self._index_chunks_in_batches(all_chunks)
+            if self.fulltext_store is not None:
+                self.fulltext_store.rebuild_index(all_chunks)
         else:
             logger.warning("Skipping vector store reset because no chunks were produced")
 
         took = time.perf_counter() - start
         logger.info(
-            "RAG sync done jobs=%s companies=%s chunks=%s took=%.2fs",
+            "rag.ingest.complete jobs=%s companies=%s chunks=%s took_seconds=%.2f",
             len(jobs),
             len(companies),
             len(all_chunks),
@@ -159,41 +166,63 @@ class RAGIngestionService:
         job_type_obj = raw.get("jobType") or raw.get("JobType") or {}
 
         job_id = str(raw.get("id") or raw.get("job_id") or raw.get("jobId") or raw.get("job_post_id") or "")
-        company = str(
-            raw.get("company_name")
-            or raw.get("company")
-            or company_obj.get("company_name")
-            or company_obj.get("name")
-            or raw.get("name")
-            or ""
+        company = self._extract_company_name(raw, company_obj)
+        company_id = self._first_text(
+            raw.get("company_id"),
+            raw.get("companyId"),
+            company_obj.get("company_id") if isinstance(company_obj, dict) else None,
+            company_obj.get("companyId") if isinstance(company_obj, dict) else None,
+            company_obj.get("id") if isinstance(company_obj, dict) else None,
         )
-        location = str(
-            raw.get("location")
-            or raw.get("workLocation")
-            or raw.get("work_location")
-            or company_obj.get("city")
-            or ""
+        city = self._first_text(raw.get("city"), company_obj.get("city") if isinstance(company_obj, dict) else None)
+        location = self._extract_location(raw, company_obj)
+        category_id = self._first_text(
+            raw.get("category_id"),
+            raw.get("categoryId"),
+            category_obj.get("category_id") if isinstance(category_obj, dict) else None,
+            category_obj.get("categoryId") if isinstance(category_obj, dict) else None,
+            category_obj.get("id") if isinstance(category_obj, dict) else None,
         )
-        category = str(raw.get("category_name") or raw.get("category") or category_obj.get("name") or "")
-        job_type = str(raw.get("job_type") or raw.get("job_type_name") or job_type_obj.get("job_type") or "")
+        category = self._first_text(raw.get("category_name"), category_obj.get("name"), raw.get("category"))
+        job_type_id = self._first_text(
+            raw.get("job_type_id"),
+            raw.get("jobTypeId"),
+            job_type_obj.get("job_type_id") if isinstance(job_type_obj, dict) else None,
+            job_type_obj.get("jobTypeId") if isinstance(job_type_obj, dict) else None,
+            job_type_obj.get("id") if isinstance(job_type_obj, dict) else None,
+        )
+        job_type = self._first_text(raw.get("job_type"), raw.get("job_type_name"), job_type_obj.get("job_type"))
+        salary_min, salary_max = self._extract_salary_bounds(
+            raw.get("salaryRange") or raw.get("salary_range"),
+            raw.get("salary") or raw.get("salary_range") or raw.get("salaryRange"),
+        )
+        is_active = self._to_bool(raw.get("isActive", raw.get("is_active", True)))
 
         skills_raw = raw.get("skills") or raw.get("skills_text") or []
         return JobRecord(
             job_id=job_id,
-            title=str(raw.get("title") or raw.get("job_title") or raw.get("name") or ""),
+            title=self._first_text(raw.get("title"), raw.get("job_title"), raw.get("name")),
+            company_id=company_id,
             company=company,
+            city=city,
             location=location,
-            salary=str(raw.get("salary") or raw.get("salary_range") or raw.get("salaryRange") or ""),
+            salary_min=salary_min,
+            salary_max=salary_max,
+            salary=self._normalize_salary_value(raw.get("salaryRange") or raw.get("salary_range") or raw.get("salary")),
+            is_active=is_active,
+            created_at=self._first_text(raw.get("created_at"), raw.get("createdAt"), raw.get("createdDate"), now_iso),
+            category_id=category_id,
             skills=self._normalize_skills(skills_raw),
             category=category,
-            description=str(raw.get("description") or raw.get("job_description") or ""),
+            job_type_id=job_type_id,
+            description=self._first_text(raw.get("description"), raw.get("job_description")),
             requirements=self._normalize_requirements(raw.get("requirements") or raw.get("candidate_requirements") or ""),
-            benefits=str(raw.get("benefits") or ""),
-            work_type=str(raw.get("work_type") or raw.get("workType") or ""),
+            benefits=self._first_text(raw.get("benefits")),
+            work_type=self._first_text(raw.get("work_type"), raw.get("workType")),
             job_type=job_type,
-            level=str(raw.get("level") or ""),
+            level=self._first_text(raw.get("level")),
             url=self._build_job_url(job_id, raw),
-            updated_at=str(raw.get("updated_at") or raw.get("updatedAt") or raw.get("updatedDate") or now_iso),
+            updated_at=self._first_text(raw.get("updated_at"), raw.get("updatedAt"), raw.get("updatedDate"), now_iso),
         )
 
     def _normalize_company(self, raw: Dict) -> CompanyRecord:
@@ -202,30 +231,88 @@ class RAGIngestionService:
         location = ", ".join([str(v).strip() for v in [raw.get("city"), raw.get("country")] if str(v or "").strip()])
         return CompanyRecord(
             company_id=company_id,
-            name=str(raw.get("company_name") or raw.get("name") or ""),
-            industry=str(raw.get("company_industry") or raw.get("industry") or ""),
-            company_type=str(raw.get("company_type") or ""),
-            size=str(raw.get("company_size") or raw.get("size") or ""),
+            name=self._first_text(raw.get("company_name"), raw.get("name")),
+            industry=self._first_text(raw.get("company_industry"), raw.get("industry")),
+            company_type=self._first_text(raw.get("company_type")),
+            size=self._first_text(raw.get("company_size"), raw.get("size")),
             location=location,
-            website=str(raw.get("company_website_url") or raw.get("website") or ""),
-            email=str(raw.get("company_email") or raw.get("email") or ""),
-            description=str(raw.get("profile_description") or raw.get("description") or ""),
+            website=self._first_text(raw.get("company_website_url"), raw.get("website")),
+            email=self._first_text(raw.get("company_email"), raw.get("email")),
+            description=self._first_text(raw.get("profile_description"), raw.get("description")),
             key_skills=self._normalize_skills(raw.get("key_skills") or ""),
-            why_join=str(raw.get("why_love_working_here") or ""),
-            updated_at=str(raw.get("updated_date") or raw.get("updatedAt") or raw.get("created_date") or now_iso),
+            why_join=self._first_text(raw.get("why_love_working_here")),
+            updated_at=self._first_text(raw.get("updated_date"), raw.get("updatedAt"), raw.get("created_date"), now_iso),
         )
 
     @staticmethod
     def _normalize_skills(skills_raw: object) -> str:
+        if isinstance(skills_raw, dict):
+            return ", ".join(
+                str(value).strip()
+                for value in skills_raw.values()
+                if str(value or "").strip() and str(value).strip().lower() not in {"none", "null"}
+            )
         if isinstance(skills_raw, list):
             return ", ".join([str(s).strip() for s in skills_raw if str(s).strip()])
-        return str(skills_raw or "")
+        return str(skills_raw or "").strip()
 
     @staticmethod
     def _normalize_requirements(requirements_raw: object) -> str:
+        if isinstance(requirements_raw, dict):
+            parts = [str(value).strip() for value in requirements_raw.values() if str(value or "").strip()]
+            return "\n".join(parts)
         if isinstance(requirements_raw, list):
             return "\n".join([str(item).strip() for item in requirements_raw if str(item).strip()])
-        return str(requirements_raw or "")
+        return str(requirements_raw or "").strip()
+
+    @staticmethod
+    def _first_text(*values: object) -> str:
+        for value in values:
+            if value is None:
+                continue
+            if isinstance(value, dict):
+                continue
+            text = str(value).strip()
+            if text and text.lower() not in {"none", "null"}:
+                return text
+        return ""
+
+    @classmethod
+    def _extract_company_name(cls, raw: Dict, company_obj: Dict) -> str:
+        return cls._first_text(
+            raw.get("company_name"),
+            company_obj.get("company_name") if isinstance(company_obj, dict) else None,
+            company_obj.get("name") if isinstance(company_obj, dict) else None,
+            raw.get("companyName"),
+            raw.get("employer_name"),
+        )
+
+    @classmethod
+    def _extract_location(cls, raw: Dict, company_obj: Dict) -> str:
+        direct = cls._first_text(raw.get("location"), raw.get("workLocation"), raw.get("work_location"))
+        if direct:
+            return direct
+
+        company_city = company_obj.get("city") if isinstance(company_obj, dict) else None
+        company_country = company_obj.get("country") if isinstance(company_obj, dict) else None
+        parts = [cls._first_text(company_city), cls._first_text(company_country)]
+        parts = [part for part in parts if part]
+        return ", ".join(parts)
+
+    @classmethod
+    def _normalize_salary_value(cls, value: object) -> str:
+        if isinstance(value, dict):
+            minimum = cls._first_text(value.get("min"), value.get("minimum"), value.get("from"))
+            maximum = cls._first_text(value.get("max"), value.get("maximum"), value.get("to"))
+            currency = cls._first_text(value.get("currency"))
+            if minimum and maximum:
+                return f"{minimum} - {maximum}{(' ' + currency) if currency else ''}".strip()
+            if minimum:
+                return f"Tu {minimum}{(' ' + currency) if currency else ''}".strip()
+            if maximum:
+                return f"Den {maximum}{(' ' + currency) if currency else ''}".strip()
+            return ""
+        return cls._first_text(value)
 
     @staticmethod
     def _build_job_url(job_id: str, raw: Dict) -> str:
@@ -247,13 +334,21 @@ class RAGIngestionService:
                             "source_id": record.job_id,
                             "source_key": f"job:{record.job_id}",
                             "job_id": record.job_id,
+                            "company_id": record.company_id,
                             "title": record.title,
                             "company": record.company,
+                            "city": record.city,
                             "location": record.location,
+                            "salary_min": record.salary_min,
+                            "salary_max": record.salary_max,
                             "salary": record.salary,
+                            "is_active": record.is_active,
+                            "created_at": record.created_at,
+                            "category_id": record.category_id,
                             "skills": record.skills,
                             "category": record.category,
                             "work_type": record.work_type,
+                            "job_type_id": record.job_type_id,
                             "job_type": record.job_type,
                             "level": record.level,
                             "url": record.url,
@@ -297,12 +392,21 @@ class RAGIngestionService:
     def _build_job_document_text(record: JobRecord) -> str:
         return (
             f"Job ID: {record.job_id}\n"
+            f"Company ID: {record.company_id}\n"
             f"Title: {record.title}\n"
             f"Company: {record.company}\n"
+            f"City: {record.city}\n"
             f"Location: {record.location}\n"
+            f"Status: {'active' if record.is_active else 'inactive'}\n"
+            f"Created At: {record.created_at}\n"
+            f"Updated At: {record.updated_at}\n"
+            f"Salary Min: {record.salary_min if record.salary_min is not None else ''}\n"
+            f"Salary Max: {record.salary_max if record.salary_max is not None else ''}\n"
             f"Salary: {record.salary}\n"
+            f"Category ID: {record.category_id}\n"
             f"Category: {record.category}\n"
             f"Work Type: {record.work_type}\n"
+            f"Job Type ID: {record.job_type_id}\n"
             f"Job Type: {record.job_type}\n"
             f"Level: {record.level}\n"
             f"Skills: {record.skills}\n"
@@ -311,6 +415,61 @@ class RAGIngestionService:
             f"Benefits: {record.benefits}\n"
             f"URL: {record.url}\n"
         )
+
+    @classmethod
+    def _extract_salary_bounds(cls, range_value: object, salary_value: object) -> Tuple[Optional[int], Optional[int]]:
+        minimum: Optional[int] = None
+        maximum: Optional[int] = None
+
+        if isinstance(range_value, dict):
+            minimum = cls._to_int(range_value.get("min") or range_value.get("minimum") or range_value.get("from"))
+            maximum = cls._to_int(range_value.get("max") or range_value.get("maximum") or range_value.get("to"))
+
+        if minimum is not None or maximum is not None:
+            return minimum, maximum
+
+        salary_text = cls._first_text(salary_value)
+        if not salary_text:
+            return None, None
+
+        numeric_tokens = re.findall(r"\d[\d,._\s]*", salary_text)
+        numbers = [cls._to_int(match) for match in numeric_tokens]
+        numbers = [value for value in numbers if value is not None]
+        if len(numbers) >= 2:
+            return numbers[0], numbers[1]
+        if len(numbers) == 1:
+            return numbers[0], numbers[0]
+        return None, None
+
+    @staticmethod
+    def _to_int(value: object) -> Optional[int]:
+        if value is None:
+            return None
+        if isinstance(value, int):
+            return value
+        if isinstance(value, float):
+            return int(value)
+
+        digits = "".join(ch for ch in str(value) if ch.isdigit())
+        if not digits:
+            return None
+        try:
+            return int(digits)
+        except ValueError:
+            return None
+
+    @staticmethod
+    def _to_bool(value: object) -> bool:
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, (int, float)):
+            return value != 0
+        lowered = str(value or "").strip().lower()
+        if lowered in {"true", "1", "yes", "y", "active"}:
+            return True
+        if lowered in {"false", "0", "no", "n", "inactive"}:
+            return False
+        return False
 
     @staticmethod
     def _build_company_document_text(record: CompanyRecord) -> str:

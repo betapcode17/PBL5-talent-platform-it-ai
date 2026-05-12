@@ -32,9 +32,13 @@ class EmbeddingService:
     def model(self) -> SentenceTransformer:
         """Lazy load embedding model on first access."""
         if self._model is None:
-            logger.info("Loading embedding model: %s on %s", EMBED_MODEL_NAME, self.device)
-            self._model = SentenceTransformer(EMBED_MODEL_NAME, device=self.device, local_files_only=HF_LOCAL_FILES_ONLY)
-            logger.info("Embedding model ready: %s on %s", EMBED_MODEL_NAME, self.device)
+            logger.info("rag.model_load.embedding.begin model=%s device=%s", EMBED_MODEL_NAME, self.device)
+            try:
+                self._model = SentenceTransformer(EMBED_MODEL_NAME, device=self.device, local_files_only=HF_LOCAL_FILES_ONLY)
+            except Exception as exc:
+                logger.exception("rag.model_load.embedding.failed model=%s device=%s error=%s", EMBED_MODEL_NAME, self.device, exc)
+                raise
+            logger.info("rag.model_load.embedding.ok model=%s device=%s", EMBED_MODEL_NAME, self.device)
         return self._model
 
     @staticmethod

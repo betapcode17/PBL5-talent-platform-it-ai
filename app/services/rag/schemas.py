@@ -12,11 +12,19 @@ class JobRecord:
 
     job_id: str
     title: str
+    company_id: str
     company: str
+    city: str
     location: str
+    salary_min: Optional[int]
+    salary_max: Optional[int]
     salary: str
+    is_active: bool
+    created_at: str
+    category_id: str
     skills: str
     category: str
+    job_type_id: str
     description: str
     requirements: str
     benefits: str
@@ -54,9 +62,9 @@ class ChunkRecord:
     metadata: Dict[str, Any]
 
 
-@dataclass(frozen=True)
+@dataclass
 class RetrievedChunk:
-    """Retrieved chunk returned by vector search."""
+    """Retrieved chunk returned by vector search. Mutable to support cross-encoder reranking."""
 
     chunk_id: str
     text: str
@@ -64,6 +72,7 @@ class RetrievedChunk:
     distance: float
     rerank_score: float
     source_key: str
+    cross_encoder_score: Optional[float] = None  # Optional cross-encoder score for advanced reranking
 
 
 @dataclass(frozen=True)

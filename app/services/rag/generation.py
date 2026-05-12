@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from typing import List
 
 import torch
@@ -40,11 +41,15 @@ class QwenGenerationService:
 
         preferred_attn_impl = "flash_attention_2" if QWEN_USE_FLASH_ATTENTION and self.device == "cuda" else "sdpa"
 
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            QWEN_MODEL_NAME,
-            trust_remote_code=True,
-            local_files_only=HF_LOCAL_FILES_ONLY,
-        )
+        try:
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                QWEN_MODEL_NAME,
+                trust_remote_code=True,
+                local_files_only=HF_LOCAL_FILES_ONLY,
+            )
+        except Exception as exc:
+            logger.exception("rag.model_load.tokenizer.failed model=%s error=%s", QWEN_MODEL_NAME, exc)
+            raise
         
         # Prepare quantization config if enabled
         quantization_config = None
@@ -79,6 +84,7 @@ class QwenGenerationService:
                     **model_kwargs,
                 )
             else:
+                logger.exception("rag.model_load.generation.failed model=%s error=%s", QWEN_MODEL_NAME, exc)
                 raise
 
         if self.device != "cuda":
@@ -86,9 +92,10 @@ class QwenGenerationService:
 
         self.model.eval()
         quant_info = " (8-bit quantized)" if quantization_config else f" | dtype={str(self.dtype)}"
-        logger.info("Qwen model ready: %s | device=%s%s", QWEN_MODEL_NAME, self.device, quant_info)
+        logger.info("rag.model_load.generation.ok model=%s device=%s%s", QWEN_MODEL_NAME, self.device, quant_info)
 
     def generate(self, prompt: str) -> GenerationResult:
+        started = time.perf_counter()
         inputs = self.tokenizer(
             prompt,
             return_tensors="pt",
@@ -116,6 +123,16 @@ class QwenGenerationService:
 
         if self.device == "cuda":
             torch.cuda.empty_cache()
+
+        latency_ms = round((time.perf_counter() - started) * 1000, 2)
+        logger.info(
+            "rag.generation.complete latency_ms=%s prompt_tokens=%s completion_tokens=%s device=%s model=%s",
+            latency_ms,
+            int(input_len),
+            int(generated_ids.shape[-1]),
+            self.device,
+            QWEN_MODEL_NAME,
+        )
 
         return GenerationResult(
             answer=answer,

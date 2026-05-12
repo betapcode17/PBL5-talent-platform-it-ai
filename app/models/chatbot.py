@@ -5,9 +5,57 @@ Chatbot data models for RAG chatbot.
 """
 
 from pydantic import BaseModel, Field # type: ignore
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union, Literal
 from datetime import datetime
 from enum import Enum
+from typing import Union
+
+
+# --- New production-ready response schemas ---
+
+
+class JobItem(BaseModel):
+    id: Optional[str]
+    title: Optional[str]
+    company: Optional[str]
+    location: Optional[str]
+    salary: Optional[str]
+    skills: Optional[List[str]] = Field(default_factory=list)
+    jobType: Optional[str]
+    score: Optional[float]
+    url: Optional[str]
+
+
+class StructuredJobsResponse(BaseModel):
+    type: Literal["jobs"] = Field("jobs")
+    items: List[JobItem] = Field(default_factory=list)
+    total: int = 0
+
+
+class RetrievalSummary(BaseModel):
+    profile: Optional[str]
+    topScore: Optional[float]
+    count: int = 0
+    fallbackTriggered: bool = False
+
+
+class GenerationMeta(BaseModel):
+    model: Optional[str]
+    latencyMs: Optional[float]
+    promptTokens: Optional[int] = None
+    completionTokens: Optional[int] = None
+
+
+class RetrievalMeta(BaseModel):
+    latencyMs: Optional[float]
+    rerankLatencyMs: Optional[float]
+    contextPackingLatencyMs: Optional[float]
+
+
+class MetaResponse(BaseModel):
+    latencyMs: Optional[float]
+    retrieval: Optional[RetrievalMeta]
+    generation: Optional[GenerationMeta]
 
 
 class ChatRole(str, Enum):
@@ -15,6 +63,12 @@ class ChatRole(str, Enum):
     USER = "user"
     ASSISTANT = "assistant"
     SYSTEM = "system"
+
+
+class ChatbotResponseMode(str, Enum):
+    TEXT = "text"
+    STRUCTURED = "structured"
+    JSON = "json"
 
 
 class ChatMessage(BaseModel):
@@ -159,11 +213,95 @@ class QueryRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=4000)
     conversationId: Optional[str] = None
     extraContext: Optional[str] = None
+    retrievalProfile: Optional[str] = Field(default=None, description="Optional retrieval profile override")
+    responseMode: ChatbotResponseMode = Field(default=ChatbotResponseMode.TEXT, description="Response format mode")
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "message": "Tim job backend Python tai HCM"
+            }
+        }
+    }
+
+
+class ChatbotMessageRequest(BaseModel):
+    """Canonical text-only chat contract for /chatbot/message."""
+    message: str = Field(..., min_length=1, max_length=4000, description="User message text")
+    conversationId: Optional[str] = Field(default=None, description="Existing conversation id")
+    extraContext: Optional[str] = Field(default=None, description="Optional extra plain-text context")
+    retrievalProfile: Optional[str] = Field(default=None, description="Optional retrieval profile override")
+    responseMode: ChatbotResponseMode = Field(default=ChatbotResponseMode.TEXT, description="Response format mode")
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "message": "Tim job backend Python tai HCM"
+            }
+        }
+    }
+
+
+class RAGSourceItem(BaseModel):
+    entityType: Optional[str] = None
+    sourceId: Optional[str] = None
+    id: Optional[str] = None
+    title: Optional[str] = None
+    company: Optional[str] = None
+    location: Optional[str] = None
+    salary: Optional[str] = None
+    skills: Optional[str] = None
+    industry: Optional[str] = None
+    url: Optional[str] = None
+    distance: Optional[float] = None
+    score: Optional[float] = None
+    chunkId: Optional[str] = None
+
+
+class RAGObservability(BaseModel):
+    sync: Dict[str, Any] = Field(default_factory=dict)
+    retrieval: Dict[str, Any] = Field(default_factory=dict)
+    generation: Dict[str, Any] = Field(default_factory=dict)
+    latencyMs: Optional[float] = None
+    promptPreview: Optional[str] = None
+    sources: List[RAGSourceItem] = Field(default_factory=list)
+
+
+class StructuredChatResponse(BaseModel):
+    summary: str
+    skills: str
+    salary: str
+    location: str
+    nextStep: str
+
+
+class ChatbotMessageResponse(BaseModel):
+    """Canonical response contract for text-only chat."""
+    success: bool = True
+    version: str = "2.1.0"
+    conversationId: str
+    message: ConversationMessage
+    data: Optional[Dict[str, Any]] = None
+    structured: Optional[Union[StructuredJobsResponse, Dict[str, Any]]] = None
+    retrieval: Optional[RetrievalSummary] = None
+    meta: Optional[MetaResponse] = None
+    rag: Optional[Dict[str, Any]] = None
+    responseMode: ChatbotResponseMode = ChatbotResponseMode.TEXT
 
 
 class ReloadRAGRequest(BaseModel):
     """Request model for manual RAG reload/reindex."""
     force: bool = Field(default=True, description="Force fetch latest data from backend and rebuild index")
+
+
+class RetrievalEvaluationCase(BaseModel):
+    query: str = Field(..., min_length=1, max_length=4000)
+    expectedTerms: List[str] = Field(default_factory=list, description="Expected terms for simple quality scoring")
+    profile: str = Field(default="balanced", description="Retrieval profile name")
+
+
+class RetrievalBenchmarkRequest(BaseModel):
+    cases: List[RetrievalEvaluationCase] = Field(..., min_length=1, max_length=100)
 
 
 class RenameConversationRequest(BaseModel):

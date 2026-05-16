@@ -46,7 +46,12 @@ class ChatbotRAGService:
         return result
 
     async def force_sync(self) -> Dict[str, Any]:
-        return await self.pipeline.ensure_index_fresh(force=True)
+        result = await self.pipeline.ensure_index_fresh(force=True)
+        return {
+            "success": True,
+            "message": "RAG data reloaded from backend successfully",
+            "syncResult": result,
+        }
 
     def health(self) -> Dict[str, Any]:
         return self.pipeline.health()

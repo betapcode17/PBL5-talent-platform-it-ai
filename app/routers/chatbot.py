@@ -211,24 +211,21 @@ async def query_rag(req: QueryRequest) -> ChatbotMessageResponse:
         raise HTTPException(status_code=500, detail=str(exc))
 
 
-@router.post("/reload")
-async def reload_rag_from_backend(req: ReloadRAGRequest) -> dict:
+
+
+
+@router.post("/sync")
+async def force_rag_sync(req: ReloadRAGRequest) -> dict:
+    """Alias of /reload kept for backwards compatibility.
+    Accepts same request body and returns the same wrapper response.
+    """
     try:
         result = await get_chatbot().pipeline.ensure_index_fresh(force=req.force)
         return {
             "success": True,
             "message": "RAG data reloaded from backend successfully",
-            "reload": result,
+            "syncResult": result,
         }
-    except Exception as exc:
-        logger.exception("chatbot.reload.failed error=%s", exc)
-        raise HTTPException(status_code=500, detail=f"RAG reload failed: {exc}")
-
-
-@router.post("/sync")
-async def force_rag_sync() -> dict:
-    try:
-        return await get_chatbot().force_sync()
     except Exception as exc:
         logger.exception("chatbot.sync.failed error=%s", exc)
         raise HTTPException(status_code=500, detail=f"RAG sync failed: {exc}")
@@ -337,13 +334,7 @@ async def get_indexed_company_detail(company_id: str) -> dict:
         raise HTTPException(status_code=500, detail=str(exc))
 
 
-@router.get("/internal/rag-stats")
-async def internal_rag_stats() -> dict:
-    try:
-        return get_chatbot().pipeline.metrics()
-    except Exception as exc:
-        logger.exception("chatbot.rag_stats.failed error=%s", exc)
-        raise HTTPException(status_code=500, detail=str(exc))
+# Note: `/internal/rag-stats` removed as duplicate of `/metrics`.
 
 
 @router.get("/prometheus", response_class=PlainTextResponse)

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 
 @dataclass
@@ -26,7 +26,7 @@ class ScoreComponents:
 	fulltext: float = 0.0
 
 
-def compose_hybrid_score(arg1, arg2=None, fulltext_weight: float = 0.0) -> float:
+def compose_hybrid_score(arg1, arg2=None, fulltext_weight: float = 0.0, include_fields: Optional[List[str]] = None) -> float:
 	"""Compose a hybrid score from components and weights.
 
 	Supports two call patterns for backward compatibility:
@@ -56,6 +56,30 @@ def compose_hybrid_score(arg1, arg2=None, fulltext_weight: float = 0.0) -> float
 	s_entity = components.entity_bias * weights.get("entity_bias", 0.0)
 	# fulltext gets an explicit external weight if provided, otherwise from weights
 	s_fulltext = components.fulltext * (fulltext_weight if fulltext_weight else weights.get("fulltext", 0.0))
+
+	# If include_fields is provided, zero out any components not in the list
+	if include_fields is not None:
+		fields = set(include_fields)
+		if "semantic" not in fields:
+			s_sem = 0.0
+		if "bm25" not in fields:
+			s_bm25 = 0.0
+		if "fulltext" not in fields:
+			s_fulltext = 0.0
+		if "entity_bias" not in fields:
+			s_entity = 0.0
+		if "title" not in fields:
+			s_title = 0.0
+		if "company" not in fields:
+			s_company = 0.0
+		if "description" not in fields:
+			s_desc = 0.0
+		if "skills" not in fields:
+			s_skills = 0.0
+		if "category" not in fields:
+			s_cat = 0.0
+		if "recency" not in fields:
+			s_recency = 0.0
 
 	base = s_sem + s_bm25 + s_fulltext + s_entity
 	meta = s_title + s_company + s_desc + s_skills + s_cat + s_recency

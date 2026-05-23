@@ -28,19 +28,11 @@ LLM_PROVIDER = os.getenv("LLM_PROVIDER", "ollama")  # Ollama only (local LLM)
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:3b")
 
-# Database Configuration - MongoDB for Chatbot
-# Using local MongoDB (localhost:27017) instead of Atlas for quick testing
-# For production, use MongoDB Atlas with proper credentials
-MONGODB_URL = os.getenv(
-    "MONGODB_URL",
-    "mongodb://localhost:27017"  # Local MongoDB - install with: https://www.mongodb.com/try/download/community
-)
-MONGODB_DATABASE = os.getenv("MONGODB_DATABASE", "cv_job_matcher")
-
-# PostgreSQL (legacy, for other services)
+# Database Configuration - PostgreSQL for chatbot persistence
+# DATABASE_URL is shared by chatbot storage and any other relational services.
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql://postgres:17122005@localhost:5432/it_job_db"
+    "postgresql://postgres:17122005@localhost:5432/chat_bot"
 )
 
 # Backend API Configuration (NestJS)

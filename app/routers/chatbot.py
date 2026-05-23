@@ -80,15 +80,15 @@ async def _handle_text_message(
     service = get_chatbot()
 
     if conversation_id:
-        conv = conversation_service.get_conversation(conversation_id)
+        conv = await conversation_service.get_conversation(conversation_id)
         if not conv:
             raise HTTPException(status_code=404, detail="Conversation not found")
         resolved_conversation_id = conv.id
     else:
-        conv = conversation_service.create_conversation(title=message[:50])
+        conv = await conversation_service.create_conversation(title=message[:50])
         resolved_conversation_id = conv.id
 
-    conversation_service.add_message(
+    await conversation_service.add_message(
         conversation_id=resolved_conversation_id,
         role="user",
         content=message,
@@ -116,7 +116,7 @@ async def _handle_text_message(
         for j in data_jobs:
             sources_for_db.append({"entityType": "job", "sourceId": j.get("id"), "title": j.get("title"), "company": j.get("company"), "url": j.get("url")})
 
-    assistant_msg = conversation_service.add_message(
+    assistant_msg = await conversation_service.add_message(
         conversation_id=resolved_conversation_id,
         role="assistant",
         content=message_content or "",
@@ -349,7 +349,7 @@ async def prometheus_metrics() -> PlainTextResponse:
 @router.get("/conversation", response_model=List[Conversation])
 async def list_conversations() -> List[Conversation]:
     try:
-        return conversation_service.get_conversations()
+        return await conversation_service.get_conversations()
     except Exception as exc:
         logger.exception("chatbot.conversations.failed error=%s", exc)
         raise HTTPException(status_code=500, detail=str(exc))
@@ -358,7 +358,7 @@ async def list_conversations() -> List[Conversation]:
 @router.post("/conversation", response_model=Conversation)
 async def create_conversation_endpoint() -> Conversation:
     try:
-        return conversation_service.create_conversation(title="Cuoc tro chuyen moi")
+        return await conversation_service.create_conversation(title="Cuoc tro chuyen moi")
     except Exception as exc:
         logger.exception("chatbot.conversation_create.failed error=%s", exc)
         raise HTTPException(status_code=500, detail=str(exc))
@@ -367,10 +367,10 @@ async def create_conversation_endpoint() -> Conversation:
 @router.get("/conversation/{conversation_id}/message", response_model=List[ConversationMessage])
 async def get_conversation_messages(conversation_id: str) -> List[ConversationMessage]:
     try:
-        conv = conversation_service.get_conversation(conversation_id)
+        conv = await conversation_service.get_conversation(conversation_id)
         if not conv:
             raise HTTPException(status_code=404, detail="Conversation not found")
-        return conversation_service.get_messages(conversation_id)
+        return await conversation_service.get_messages(conversation_id)
     except HTTPException:
         raise
     except Exception as exc:
@@ -381,7 +381,7 @@ async def get_conversation_messages(conversation_id: str) -> List[ConversationMe
 @router.delete("/conversation/{conversation_id}")
 async def delete_conversation_endpoint(conversation_id: str) -> dict:
     try:
-        deleted = conversation_service.delete_conversation(conversation_id)
+        deleted = await conversation_service.delete_conversation(conversation_id)
         if not deleted:
             raise HTTPException(status_code=404, detail="Conversation not found")
         return {"success": True, "message": "Conversation deleted"}
@@ -395,7 +395,7 @@ async def delete_conversation_endpoint(conversation_id: str) -> dict:
 @router.post("/conversation/rename", response_model=RenameConversationResponse)
 async def rename_conversation_endpoint(req: RenameConversationRequest) -> RenameConversationResponse:
     try:
-        updated_conv = conversation_service.rename_conversation(conv_id=req.conversationId, new_title=req.newTitle)
+        updated_conv = await conversation_service.rename_conversation(conv_id=req.conversationId, new_title=req.newTitle)
         if not updated_conv:
             raise HTTPException(status_code=404, detail="Conversation not found")
         return RenameConversationResponse(

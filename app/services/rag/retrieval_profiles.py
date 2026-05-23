@@ -27,6 +27,10 @@ class RetrievalProfile:
     title_weight: float = 0.5
     company_weight: float = 0.5
     description_weight: float = 0.5
+    location_weight: float = 0.3
+    salary_weight: float = 0.2
+    job_type_weight: float = 0.2
+    recency_weight: float = 0.15
     skills_weight: float = 0.5
     category_weight: float = 0.2
     entity_bias_weight: float = 0.1
@@ -38,6 +42,10 @@ class RetrievalProfile:
             "title": self.title_weight,
             "company": self.company_weight,
             "description": self.description_weight,
+            "location": self.location_weight,
+            "salary": self.salary_weight,
+            "job_type": self.job_type_weight,
+            "recency": self.recency_weight,
             "skills": self.skills_weight,
             "category": self.category_weight,
             "entity_bias": self.entity_bias_weight,
@@ -46,10 +54,10 @@ class RetrievalProfile:
 
 # minimal set of profiles
 PROFILES: Dict[str, RetrievalProfile] = {
-    "balanced": RetrievalProfile(name="balanced", candidate_k=64, top_k=8, rerank_with_cross_encoder=False, max_context_tokens=1500, normalization="minmax", max_chunks_per_source=4),
-    "strict-job-search": RetrievalProfile(name="strict-job-search", candidate_k=96, top_k=12, rerank_with_cross_encoder=True, max_context_tokens=2000, normalization="minmax", max_chunks_per_source=6, semantic_weight=1.2, bm25_weight=0.8),
-    "faq": RetrievalProfile(name="faq", candidate_k=24, top_k=6, rerank_with_cross_encoder=False, max_context_tokens=800, normalization="minmax", max_chunks_per_source=2, semantic_weight=0.6, bm25_weight=1.4),
-    "recommendation": RetrievalProfile(name="recommendation", candidate_k=48, top_k=6, rerank_with_cross_encoder=False, max_context_tokens=1200, normalization="minmax", max_chunks_per_source=4, semantic_weight=1.4, bm25_weight=0.6),
+    "balanced": RetrievalProfile(name="balanced", candidate_k=64, top_k=8, rerank_with_cross_encoder=False, max_context_tokens=1500, normalization="minmax", max_chunks_per_source=4, title_weight=0.45, company_weight=0.35, description_weight=0.40, location_weight=0.30, salary_weight=0.20, job_type_weight=0.20, recency_weight=0.15),
+    "strict-job-search": RetrievalProfile(name="strict-job-search", candidate_k=96, top_k=12, rerank_with_cross_encoder=True, max_context_tokens=2000, normalization="minmax", max_chunks_per_source=6, semantic_weight=1.15, bm25_weight=0.85, title_weight=0.55, company_weight=0.20, description_weight=0.45, location_weight=0.55, salary_weight=0.40, job_type_weight=0.35, recency_weight=0.25),
+    "faq": RetrievalProfile(name="faq", candidate_k=24, top_k=6, rerank_with_cross_encoder=False, max_context_tokens=800, normalization="minmax", max_chunks_per_source=2, semantic_weight=0.6, bm25_weight=1.4, title_weight=0.25, company_weight=0.15, description_weight=0.55, location_weight=0.05, salary_weight=0.0, job_type_weight=0.0, recency_weight=0.05),
+    "recommendation": RetrievalProfile(name="recommendation", candidate_k=48, top_k=6, rerank_with_cross_encoder=False, max_context_tokens=1200, normalization="minmax", max_chunks_per_source=4, semantic_weight=1.4, bm25_weight=0.6, title_weight=0.40, company_weight=0.20, description_weight=0.45, location_weight=0.10, salary_weight=0.05, job_type_weight=0.05, recency_weight=0.10),
 }
 
 

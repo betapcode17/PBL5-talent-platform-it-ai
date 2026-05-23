@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 from rank_bm25 import BM25Okapi  # type: ignore
 
 from ..rerankers.cross_encoder import CrossEncoderReranker
+from ..rerankers.rerank_presets import get_weights
 from ..infra.dedupe import DedupeStats, dedupe_and_diversify
 from ..infra.embedding import EmbeddingService
 from ..infra.fallback import detect_low_confidence, fallback_observability_payload
@@ -54,26 +55,369 @@ CITY_ALIASES = {
 	"cantho": {"cantho", "can tho"},
 }
 
-EDUCATION_HINTS = {"tutorial", "course", "learn", "guide", "example", "examples", "docs", "documentation"}
-BACKEND_SKILL_HINTS = {"java", "python", "golang", "node", "nestjs", "fastapi", "django", "spring", "sql", "postgresql", "mongodb", "redis", "docker", "kubernetes"}
-FRONTEND_SKILL_HINTS = {"react", "reactjs", "reactnative", "vue", "vuejs", "javascript", "typescript", "html", "css", "nextjs"}
-ROLE_HINTS = {"backend", "frontend", "fullstack", "data", "devops", "mobile", "qa", "product"}
-SKILL_HINTS = {
+EDUCATION_HINTS = {
+	"tutorial",
+	"course",
+	"learn",
+	"learning",
+	"guide",
+	"example",
+	"examples",
+	"docs",
+	"documentation",
+	"document",
+	"roadmap",
+	"training",
+	"lesson",
+	"practice",
+	"sample",
+	"samples",
+	"reference",
+	"references",
+	"manual",
+	"walkthrough",
+	"howto",
+	"how-to",
+	"ebook",
+	"cheatsheet",
+	"cheat-sheet",
+	"exercise",
+	"bootcamp",
+	"academy",
+	"curriculum",
+	"syllabus",
+	"mentor",
+	"mentoring",
+	"certification",
+	"certificate",
+	"interview",
+	"interviewprep",
+	"prep",
+	"study",
+	"studyplan",
+	"lab",
+	"labs",
+	"sandbox",
+}
+
+
+BACKEND_SKILL_HINTS = {
+	# Languages
 	"java",
 	"python",
 	"golang",
+	"go",
+	"csharp",
+	"dotnet",
+	".net",
+	"php",
+	"ruby",
+	"rust",
+	"scala",
+	"kotlin",
+	"perl",
+
+	# Node ecosystem
 	"node",
+	"nodejs",
 	"nestjs",
+	"express",
+	"expressjs",
+	"koa",
+
+	# Python ecosystem
 	"fastapi",
 	"django",
+	"flask",
+	"pyramid",
+
+	# Java ecosystem
 	"spring",
+	"springboot",
+	"spring-boot",
+	"hibernate",
+	"maven",
+	"gradle",
+
+	# Databases
 	"sql",
+	"mysql",
+	"postgres",
 	"postgresql",
 	"mongodb",
 	"redis",
+	"elasticsearch",
+	"opensearch",
+	"sqlite",
+	"oracle",
+	"mssql",
+	"dynamodb",
+	"cassandra",
+
+	# Infra / Cloud
 	"docker",
 	"kubernetes",
+	"terraform",
+	"ansible",
+	"nginx",
+	"apache",
+	"linux",
+	"aws",
+	"gcp",
+	"azure",
+	"cloud",
+	"serverless",
+
+	# Messaging / Streaming
+	"kafka",
+	"rabbitmq",
+	"sqs",
+	"pubsub",
+
+	# API / Auth
+	"graphql",
+	"rest",
+	"restapi",
+	"oauth",
+	"jwt",
+	"grpc",
+
+	# Architecture
+	"microservices",
+	"distributed",
+	"backend",
+	"api",
 }
+
+
+FRONTEND_SKILL_HINTS = {
+	# Core web
+	"html",
+	"css",
+	"scss",
+	"sass",
+	"less",
+	"javascript",
+	"typescript",
+
+	# React ecosystem
+	"react",
+	"reactjs",
+	"react-native",
+	"reactnative",
+	"redux",
+	"nextjs",
+	"next.js",
+	"remix",
+
+	# Vue ecosystem
+	"vue",
+	"vuejs",
+	"nuxt",
+	"nuxtjs",
+
+	# Angular ecosystem
+	"angular",
+	"angularjs",
+
+	# Mobile
+	"flutter",
+	"dart",
+	"ios",
+	"android",
+	"swift",
+	"swiftui",
+	"kotlin",
+	"jetpack",
+
+	# UI frameworks
+	"tailwind",
+	"tailwindcss",
+	"bootstrap",
+	"materialui",
+	"mui",
+	"chakraui",
+	"antdesign",
+
+	# State management
+	"zustand",
+	"mobx",
+	"recoil",
+	"contextapi",
+
+	# Build tools
+	"vite",
+	"webpack",
+	"babel",
+
+	# Testing
+	"jest",
+	"cypress",
+	"playwright",
+
+	# Concepts
+	"frontend",
+	"ui",
+	"ux",
+	"responsive",
+	"spa",
+}
+
+
+AI_SKILL_HINTS = {
+	"ai",
+	"ml",
+	"machinelearning",
+	"deeplearning",
+	"nlp",
+	"llm",
+	"rag",
+	"transformer",
+	"langchain",
+	"llamaindex",
+	"huggingface",
+	"pytorch",
+	"tensorflow",
+	"keras",
+	"opencv",
+	"scikitlearn",
+	"xgboost",
+	"lightgbm",
+	"pandas",
+	"numpy",
+	"matplotlib",
+	"seaborn",
+	"computervision",
+	"reinforcementlearning",
+	"promptengineering",
+	"embedding",
+	"vectorsearch",
+	"chromadb",
+	"qdrant",
+	"faiss",
+}
+
+
+DEVOPS_HINTS = {
+	"devops",
+	"sre",
+	"platform",
+	"infra",
+	"infrastructure",
+	"cicd",
+	"jenkins",
+	"githubactions",
+	"gitlabci",
+	"docker",
+	"kubernetes",
+	"terraform",
+	"ansible",
+	"helm",
+	"linux",
+	"nginx",
+	"monitoring",
+	"grafana",
+	"prometheus",
+	"elk",
+	"cloudwatch",
+	"aws",
+	"azure",
+	"gcp",
+}
+
+
+DATA_HINTS = {
+	"data",
+	"dataengineer",
+	"analytics",
+	"analyst",
+	"bi",
+	"etl",
+	"elt",
+	"warehouse",
+	"lakehouse",
+	"spark",
+	"hadoop",
+	"airflow",
+	"snowflake",
+	"bigquery",
+	"redshift",
+	"databricks",
+	"pyspark",
+	"dbt",
+	"tableau",
+	"powerbi",
+}
+
+
+ROLE_HINTS = {
+	# Engineering
+	"backend",
+	"frontend",
+	"fullstack",
+	"full-stack",
+	"software",
+	"developer",
+	"engineer",
+	"programmer",
+
+	# Data / AI
+	"data",
+	"ml",
+	"ai",
+	"scientist",
+	"analyst",
+
+	# DevOps
+	"devops",
+	"sre",
+	"platform",
+
+	# Mobile
+	"mobile",
+	"android",
+	"ios",
+
+	# QA
+	"qa",
+	"tester",
+	"automation",
+
+	# Product
+	"product",
+	"pm",
+	"po",
+	"manager",
+
+	# Design
+	"designer",
+	"uiux",
+	"ux",
+	"ui",
+
+	# Security
+	"security",
+	"cybersecurity",
+	"pentest",
+
+	# Internship
+	"intern",
+	"internship",
+	"fresher",
+	"junior",
+	"senior",
+	"lead",
+	"principal",
+}
+
+
+SKILL_HINTS = (
+	BACKEND_SKILL_HINTS
+	| FRONTEND_SKILL_HINTS
+	| AI_SKILL_HINTS
+	| DEVOPS_HINTS
+	| DATA_HINTS
+)
 
 
 class RAGRetrievalService:
@@ -86,6 +430,7 @@ class RAGRetrievalService:
 		self.fulltext_store = RAGFullTextStore() if RAG_USE_FULLTEXT_SEARCH else None
 		self.cross_encoder = CrossEncoderReranker() if RAG_USE_CROSS_ENCODER else None
 		self.metrics = RetrievalMetrics()
+		self.weights = get_weights(RAG_RERANK_PRESET)
 		self.last_profile = resolve_profile(RAG_DEFAULT_PROFILE)
 		self.last_dedupe_stats = DedupeStats(0, 0, 0, 0, 0)
 		self.last_fallback: Dict[str, Any] = fallback_observability_payload("none", "not-run", enabled=False)
@@ -167,6 +512,9 @@ class RAGRetrievalService:
 		# assemble reranked items with per-component breakdown
 		rerank_started = time.perf_counter()
 		reranked: List[RetrievedChunk] = []
+		# Detect if this is a job-style query; if so, keep backend job fields active.
+		is_job_search = self._looks_like_job_search(query_plan.get("terms", set()))
+		include_fields_arg: Optional[List[str]] = ["title", "description", "location", "company", "category", "salary", "job_type", "recency"] if is_job_search else None
 		for idx, candidate in enumerate(candidates):
 			metadata = candidate.get("metadata") or {}
 			metadata_scores = compute_metadata_scores(query_plan["terms"], metadata, boost_plan)
@@ -182,12 +530,16 @@ class RAGRetrievalService:
 					title=metadata_scores.title,
 					company=metadata_scores.company,
 					description=metadata_scores.description,
-					skills=metadata_scores.skills,
 					category=metadata_scores.category,
+					location=getattr(metadata_scores, "location", 0.0),
+					salary=getattr(metadata_scores, "salary", 0.0),
+					job_type=getattr(metadata_scores, "job_type", 0.0),
+					recency=getattr(metadata_scores, "recency", 0.0),
 					entity_bias=1.0 if self._detect_entity_bias(query_plan["terms"]) == metadata.get("entity_type") else 0.0, # type: ignore
 					fulltext=fulltext_score,  # type: ignore
 				),
 				RAG_FULLTEXT_WEIGHT, # type: ignore
+				include_fields=include_fields_arg,
 			)
 
 			item = RetrievedChunk(
@@ -229,9 +581,26 @@ class RAGRetrievalService:
 
 		rerank_latency_ms = round((time.perf_counter() - rerank_started) * 1000, 2)
 		if query_plan.get("city_hint"):
-			reranked = [item for item in reranked if self._matches_city_hint(item.metadata, query_plan.get("city_hint"))] # type: ignore
+			city_filtered = [item for item in reranked if self._matches_city_hint(item.metadata, query_plan.get("city_hint"))] # type: ignore
+			if city_filtered:
+				reranked = city_filtered
+			else:
+				logger.info(
+					"rag.retrieval.city_filter.relaxed query=%r city_hint=%s candidates=%s",
+					query[:120],
+					query_plan.get("city_hint"),
+					len(reranked),
+				)
 
-		reranked = [item for item in reranked if self._has_minimum_relevance(item.metadata, q_terms)]
+		relevance_filtered = [item for item in reranked if self._has_minimum_relevance(item, q_terms)]
+		if relevance_filtered:
+			reranked = relevance_filtered
+		elif reranked:
+			logger.info(
+				"rag.retrieval.relevance_filter.relaxed query=%r candidates=%s",
+				query[:120],
+				len(reranked),
+			)
 		selected = dedupe_and_diversify(
 			reranked,
 			top_k=min(profile.top_k, RAG_TOP_K),
@@ -278,7 +647,8 @@ class RAGRetrievalService:
 		self._cache[cache_key] = (now, result)
 		return result
 
-	def _resolve_runtime_profile(self, query: str, requested_profile: Optional[str]) -> RetrievalProfile:
+	@classmethod
+	def _resolve_runtime_profile(cls, query: str, requested_profile: Optional[str]) -> RetrievalProfile:
 		def _with_runtime_normalization(profile: RetrievalProfile) -> RetrievalProfile:
 			if not RAG_NORMALIZATION_STRATEGY or profile.normalization == RAG_NORMALIZATION_STRATEGY:
 				return profile
@@ -294,7 +664,7 @@ class RAGRetrievalService:
 			return _with_runtime_normalization(resolve_profile("recommendation"))
 		if {"salary", "location", "remote", "hybrid", "onsite"} & terms:
 			return _with_runtime_normalization(resolve_profile("strict-job-search"))
-		if self._looks_like_job_search(terms):
+		if cls._looks_like_job_search(terms):
 			return _with_runtime_normalization(resolve_profile("strict-job-search"))
 		return _with_runtime_normalization(resolve_profile(RAG_DEFAULT_PROFILE))
 
@@ -467,9 +837,29 @@ class RAGRetrievalService:
 
 	@staticmethod
 	def _looks_like_job_search(query_terms: set[str]) -> bool:
-		if not query_terms or query_terms & EDUCATION_HINTS:
+		# If there are no terms, it's not a job search
+		if not query_terms:
 			return False
-		return bool((ROLE_HINTS | SKILL_HINTS).intersection(query_terms))
+
+		edu_present = bool(query_terms & EDUCATION_HINTS)
+		role_present = bool(query_terms & ROLE_HINTS)
+		# Consider non-AI skill tokens (languages, frameworks, infra) as stronger
+		# indicators of job queries than generic AI/ML tokens like 'ai' or 'ml'.
+		non_ai_skill_present = bool((SKILL_HINTS - AI_SKILL_HINTS).intersection(query_terms))
+		ai_tokens_present = bool(query_terms & AI_SKILL_HINTS)
+
+		# If the query is clearly educational (has education hints) and lacks
+		# any explicit role or non-AI skill tokens, treat it as non-job.
+		if edu_present and not (role_present or non_ai_skill_present):
+			return False
+
+		# Classify as job search if there's an explicit role or a non-AI skill.
+		if role_present or non_ai_skill_present:
+			return True
+
+		# Generic AI/ML tokens alone shouldn't trigger job-search classification
+		# unless combined with a role/non-AI skill (handled above).
+		return False
 
 	@staticmethod
 	def _infer_role_hint(query_terms: set[str]) -> Optional[str]:
@@ -507,15 +897,25 @@ class RAGRetrievalService:
 		return False
 
 	@staticmethod
-	def _has_minimum_relevance(metadata: Dict[str, Any], query_terms: set[str]) -> bool:
+	def _has_minimum_relevance(candidate: Any, query_terms: set[str]) -> bool:
 		if not query_terms:
 			return True
 
+		if isinstance(candidate, dict):
+			metadata = candidate.get("metadata") or {}
+			text = str(candidate.get("text") or "")
+		else:
+			metadata = getattr(candidate, "metadata", {}) or {}
+			text = str(getattr(candidate, "text", "") or "")
+
 		field_terms = set()
-		for key in ("title", "company", "skills", "category", "location", "city", "job_type", "work_type", "level"):
+		for key in ("title", "company", "category", "location", "city", "job_type", "work_type", "level"):
 			value = metadata.get(key)
 			if value:
 				field_terms.update(extract_terms(str(value)))
+
+		if text:
+			field_terms.update(extract_terms(text))
 
 		return len(query_terms.intersection(field_terms)) > 0
 

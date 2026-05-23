@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 
 @dataclass
@@ -19,14 +19,16 @@ class ScoreComponents:
 	title: float = 0.0
 	company: float = 0.0
 	description: float = 0.0
-	skills: float = 0.0
 	category: float = 0.0
+	location: float = 0.0
+	salary: float = 0.0
+	job_type: float = 0.0
 	recency: float = 0.0
 	entity_bias: float = 0.0
 	fulltext: float = 0.0
 
 
-def compose_hybrid_score(arg1, arg2=None, fulltext_weight: float = 0.0) -> float:
+def compose_hybrid_score(arg1, arg2=None, fulltext_weight: float = 0.0, include_fields: Optional[List[str]] = None) -> float:
 	"""Compose a hybrid score from components and weights.
 
 	Supports two call patterns for backward compatibility:
@@ -50,15 +52,45 @@ def compose_hybrid_score(arg1, arg2=None, fulltext_weight: float = 0.0) -> float
 	s_title = components.title * weights.get("title", 0.0)
 	s_company = components.company * weights.get("company", 0.0)
 	s_desc = components.description * weights.get("description", 0.0)
-	s_skills = components.skills * weights.get("skills", 0.0)
 	s_cat = components.category * weights.get("category", 0.0)
+	s_location = components.location * weights.get("location", 0.0)
+	s_salary = components.salary * weights.get("salary", 0.0)
+	s_job_type = components.job_type * weights.get("job_type", 0.0)
 	s_recency = components.recency * weights.get("recency", 0.0)
 	s_entity = components.entity_bias * weights.get("entity_bias", 0.0)
 	# fulltext gets an explicit external weight if provided, otherwise from weights
 	s_fulltext = components.fulltext * (fulltext_weight if fulltext_weight else weights.get("fulltext", 0.0))
 
+	# If include_fields is provided, zero out any components not in the list
+	if include_fields is not None:
+		fields = set(include_fields)
+		if "semantic" not in fields:
+			s_sem = 0.0
+		if "bm25" not in fields:
+			s_bm25 = 0.0
+		if "fulltext" not in fields:
+			s_fulltext = 0.0
+		if "entity_bias" not in fields:
+			s_entity = 0.0
+		if "title" not in fields:
+			s_title = 0.0
+		if "company" not in fields:
+			s_company = 0.0
+		if "description" not in fields:
+			s_desc = 0.0
+		if "category" not in fields:
+			s_cat = 0.0
+		if "location" not in fields:
+			s_location = 0.0
+		if "salary" not in fields:
+			s_salary = 0.0
+		if "job_type" not in fields:
+			s_job_type = 0.0
+		if "recency" not in fields:
+			s_recency = 0.0
+
 	base = s_sem + s_bm25 + s_fulltext + s_entity
-	meta = s_title + s_company + s_desc + s_skills + s_cat + s_recency
+	meta = s_title + s_company + s_desc + s_cat + s_location + s_salary + s_job_type + s_recency
 	# ensure some normalization so values stay in a comparable range
 	final = base * (1.0 + 0.5 * meta)
 	# clamp to a stable range

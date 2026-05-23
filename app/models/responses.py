@@ -41,6 +41,50 @@ class CVImproveResponse(BaseModel):
     cv_id: int = Field(..., description="ID của CV")
     improvements: List[ImprovementSuggestion] = Field(..., description="Danh sách gợi ý cải thiện")
 
+
+class CVJobMatchInsight(BaseModel):
+    """Thông tin một job phù hợp dùng để phân tích gap kỹ năng."""
+    job_id: Optional[int] = Field(None, description="ID job")
+    job_title: str = Field(..., description="Tiêu đề job")
+    company_name: str = Field(..., description="Tên công ty")
+    match_score: float = Field(..., ge=0.0, le=1.0, description="Điểm phù hợp (0-1)")
+    matched_skills: List[str] = Field(default_factory=list, description="Kỹ năng khớp")
+    missing_skills: List[str] = Field(default_factory=list, description="Kỹ năng còn thiếu")
+    why_match: Optional[str] = Field(None, description="Lý do phù hợp")
+    salary: Optional[str] = Field(None, description="Mức lương")
+    work_location: Optional[str] = Field(None, description="Địa điểm làm việc")
+    work_type: Optional[str] = Field(None, description="Loại hình làm việc")
+
+
+class LearningRecommendation(BaseModel):
+    """Gợi ý nên học gì dựa trên dữ liệu job trong ChromaDB."""
+    skill: str = Field(..., description="Kỹ năng nên học")
+    reason: str = Field(..., description="Lý do gợi ý")
+    related_jobs_count: int = Field(..., ge=0, description="Số job có yêu cầu skill này")
+    example_jobs: List[str] = Field(default_factory=list, description="Ví dụ job liên quan")
+    priority: str = Field(..., description="Mức độ ưu tiên")
+
+
+class LearningRoadmapStep(BaseModel):
+    phase: str = Field(..., description="Tên giai đoạn (ví dụ: '0-3 months')")
+    duration_weeks: int = Field(..., description="Độ dài giai đoạn (tuần)")
+    objectives: List[str] = Field(default_factory=list, description="Mục tiêu cụ thể")
+    resources: List[Dict[str, str]] = Field(default_factory=list, description="Tài nguyên học (name, url)")
+    projects: List[str] = Field(default_factory=list, description="Các dự án nhỏ để thực hành")
+    milestones: List[str] = Field(default_factory=list, description="Mốc đánh giá tiến độ")
+
+
+class CVFileAnalysisResponse(BaseModel):
+    """Response cho endpoint upload CV và phân tích ngay."""
+    cv_id: int = Field(..., description="ID của CV")
+    filename: str = Field(..., description="Tên file CV")
+    insights: CVInsightsResponse = Field(..., description="Phân tích CV cơ bản")
+    matched_jobs: List[CVJobMatchInsight] = Field(default_factory=list, description="Các job phù hợp nhất")
+    learning_suggestions: List[LearningRecommendation] = Field(default_factory=list, description="Gợi ý nên học gì")
+    market_summary: Dict[str, Any] = Field(default_factory=dict, description="Tổng quan thị trường từ job data")
+    extracted_text: Optional[str] = Field(None, description="(Debug) Văn bản thô trích xuất từ PDF để kiểm tra chất lượng OCR/extraction")
+    learning_roadmap: List[LearningRoadmapStep] = Field(default_factory=list, description="Lộ trình học tập cụ thể để cải thiện kỹ năng và bù gap")
+
 class JobSearchInput(BaseModel):
     """Input cho endpoint /jobs/search"""
     query: Optional[str] = Field(None, description="Từ khóa tìm kiếm")

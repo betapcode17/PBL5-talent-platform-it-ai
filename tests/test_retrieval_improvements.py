@@ -20,6 +20,8 @@ from app.services.rag.rerank_presets import (
     SEMANTIC_FIRST_WEIGHTS,
     get_weights,
 )
+from app.services.rag.score_and_boost.metadata_boost import build_boost_plan, compute_metadata_scores
+from app.services.rag.score_and_boost.scoring import ScoreComponents, compose_hybrid_score
 from app.services.rag.schemas import RetrievedChunk
 
 
@@ -162,6 +164,74 @@ class TestRetreivalServiceInitialization:
         assert hasattr(service, 'weights')
         assert service.weights is not None
         assert abs(service.weights.total_weight - 1.0) < 0.01
+
+
+class TestJobSignalScoring:
+    """Test backend-shaped job fields contribute to job-search ranking."""
+
+    def test_backend_fields_score_location_salary_job_type_and_recency(self):
+        terms = {"backend", "python", "hcm", "luong", "fulltime"}
+        metadata = {
+            "title": "Backend Python Engineer",
+            "company": "ACME",
+            "description": "Build APIs for a fast-growing product team.",
+            "location": "Ho Chi Minh City",
+            "salary": "25-35m",
+            "job_type": "Toàn thời gian",
+            "updated_at": "2026-04-19T14:23:28.203Z",
+        }
+
+        scores = compute_metadata_scores(terms, metadata, build_boost_plan(terms))
+
+        assert scores.location > 0.0
+        assert scores.salary > 0.0
+        assert scores.job_type > 0.0
+        assert scores.recency > 0.0
+
+        rerank = compose_hybrid_score(
+            {
+                "semantic": 1.0,
+                "bm25": 0.0,
+                "title": 0.4,
+                "company": 0.1,
+                "description": 0.3,
+                "location": 0.5,
+                "salary": 0.4,
+                "job_type": 0.4,
+                "recency": 0.3,
+                "category": 0.0,
+                "entity_bias": 0.0,
+                "fulltext": 0.0,
+            },
+            ScoreComponents(
+                semantic=0.55,
+                bm25=0.0,
+                title=scores.title,
+                company=scores.company,
+                description=scores.description,
+                category=0.0,
+                location=scores.location,
+                salary=scores.salary,
+                job_type=scores.job_type,
+                recency=scores.recency,
+                entity_bias=0.0,
+                fulltext=0.0,
+            ),
+            include_fields=["semantic", "title", "description", "location", "salary", "job_type", "recency"],
+        )
+
+        assert rerank > 0.55
+
+    def test_job_search_profile_exposes_backend_weights(self):
+        from app.services.rag.retrieval import RAGRetrievalService
+
+        profile = RAGRetrievalService._resolve_runtime_profile("backend python hcm", None)
+        weights = profile.weights()
+
+        assert weights["location"] > 0.0
+        assert weights["salary"] > 0.0
+        assert weights["job_type"] > 0.0
+        assert weights["recency"] > 0.0
 
 
 def run_manual_tests():

@@ -1,10 +1,4 @@
-"""Chroma-backed vector store implementation residing in stores package.
-
-This file contains the concrete RAGVectorStore that was previously at the
-top-level of the package. It keeps the same public class name but uses the
-internal chroma client and expects metadata values to be validated by the
-ingestion layer (e.g. `skills` non-empty lists).
-"""
+"""Chroma-backed vector store implementation residing in stores package."""
 
 from __future__ import annotations
 
@@ -34,9 +28,6 @@ class RAGVectorStore:
 			ids.append(ch.chunk_id)
 			docs.append(ch.text)
 			md = ch.metadata or {}
-			# important: chroma requires list-valued metadata fields to be non-empty lists
-			if isinstance(md.get("skills"), list) and not md.get("skills"):
-				md["skills"] = ["general"]
 			metadatas.append(md)
 
 		# Batch-encode all documents once to utilize GPU batching

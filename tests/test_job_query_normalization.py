@@ -30,3 +30,12 @@ def test_job_query_plan_keeps_role_and_skill_intent() -> None:
 def test_city_alias_matches_ho_chi_minh_city() -> None:
     assert RAGRetrievalService._detect_city_hint("tim viec backend java hcm") == "hcm"
     assert RAGRetrievalService._matches_city_hint({"location": "Ho Chi Minh City"}, "hcm")
+
+
+def test_minimum_relevance_uses_chunk_text_when_metadata_is_sparse() -> None:
+    candidate = {
+        "metadata": {"title": "Software Engineer"},
+        "text": "We are hiring a Python backend engineer in Ho Chi Minh City.",
+    }
+
+    assert RAGRetrievalService._has_minimum_relevance(candidate, {"backend", "python", "hcm"})

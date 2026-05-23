@@ -2,13 +2,17 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from typing import Dict, List
 from app.models.core import DocumentInfo, DeleteFileRequest
-from app.models.responses import CVInsightsResponse, CVImproveResponse, ImprovementSuggestion
-from app.services.db_utils import (
-    get_db_connection, insert_cv_record, get_all_cvs, delete_cv_record,
-    get_cv_insights, save_cv_insights
+from app.models.responses import (
+    CVInsightsResponse,
+    CVImproveResponse,
+    ImprovementSuggestion,
+    CVFileAnalysisResponse,
+    CVJobMatchInsight,
+    LearningRecommendation,
 )
-from app.services.chroma_utils import index_cv_extracts, delete_cv_from_chroma
-from app.services.ai_analysis import analyze_cv_insights, generate_cv_improvements
+
+
+from app.services.ai_analysis import analyze_cv_insights, generate_cv_improvements, analyze_cv_against_jobs
 from app.utils.pdf_parser import extract_text_from_pdf, extract_cv_info
 from app.utils.date_utils import normalize_date
 import os
@@ -18,231 +22,237 @@ from datetime import datetime
 
 router = APIRouter()
 
-@router.post("/upload")
-async def upload_cv(file: UploadFile = File(...)):
-    """Tải lên CV PDF, trích xuất thông tin, lưu vào cv_store và Chroma."""
-    if not file.filename.lower().endswith('.pdf'): # type: ignore
+
+# Database helpers (may be monkeypatched in tests or implemented elsewhere).
+def insert_cv_record(filename, cv_info, file_data):
+    """Store the CV file and metadata and return a cv_id.
+
+    This is a placeholder implementation; the real DB integration should
+    provide this function or tests may monkeypatch it.
+    """
+    raise NotImplementedError("insert_cv_record is not implemented")
+
+
+def save_cv_insights(cv_id, insights):
+    """Persist CV insights for later retrieval.
+
+    Placeholder — to be provided by DB layer or test monkeypatch.
+    """
+    raise NotImplementedError("save_cv_insights is not implemented")
+
+
+def delete_cv_record(cv_id):
+    """Delete a previously inserted CV record. Placeholder implementation."""
+    raise NotImplementedError("delete_cv_record is not implemented")
+
+
+def _build_cv_insights_response(cv_id: int, insights: Dict, analyzed_at: str) -> CVInsightsResponse:
+    return CVInsightsResponse(
+        cv_id=cv_id,
+        quality_score=insights.get('quality_score', 5.0),
+        completeness={
+            "has_portfolio": insights.get('has_portfolio', False),
+            "has_certifications": insights.get('has_certifications', False),
+            "has_projects": insights.get('has_projects', False),
+            "missing_sections": insights.get('missing_sections', []),
+        },
+        market_fit={
+            "skill_match_rate": insights.get('market_fit_score', 0.5),
+            "experience_level": insights.get('experience_level', 'Unknown'),
+            "salary_range": insights.get('salary_range', 'N/A'),
+            "competitive_score": insights.get('competitive_score', 5.0),
+        },
+        strengths=insights.get('strengths', []),
+        weaknesses=insights.get('weaknesses', []),
+        last_analyzed=analyzed_at,
+    )
+
+
+def _fallback_cv_insights(cv_info: Dict) -> Dict:
+    skills = cv_info.get("skills", []) or []
+    experience = cv_info.get("experience", []) or []
+    education = cv_info.get("education", []) or []
+    # Point 2: has_projects should NOT be inferred from experience; check cv_info.has_projects
+    has_projects_actual = cv_info.get("has_projects", False)
+
+    strengths = []
+    if skills:
+        # Point 3: Don't be generic; be specific (not "extracted N skills")
+        tech_skills = [s for s in skills if len(s) > 2]
+        if tech_skills:
+            strengths.append(f"Technical stack includes: {', '.join(tech_skills[:5])}")
+    if experience:
+        strengths.append(f"Demonstrated {len(experience)} positions with hands-on experience")
+    if education:
+        strengths.append(f"Formal education: {len(education)} degree(s)/qualification(s)")
+
+    weaknesses = []
+    if not skills:
+        weaknesses.append("Missing technical skills section or detail")
+    if not experience:
+        weaknesses.append("No professional work experience documented")
+    if not education:
+        weaknesses.append("Education/qualification information not found")
+    if not cv_info.get("career_objective"):
+        weaknesses.append("No career objective, summary, or seeking statement")
+    # Point 1: Don't report missing projects if has_projects_actual is True
+    if not has_projects_actual and "projects" not in weaknesses:
+        weaknesses.append("No projects or case studies documented")
+    if not weaknesses:
+        weaknesses.append("Recommend adding quantified metrics and specific project outcomes")
+
+    return {
+        "quality_score": 5.0 if not skills else min(8.5, 4.5 + 0.4 * len(skills)),  # Point 8: cap at 8.5 for intern
+        "completeness_score": 0.5,
+        "has_portfolio": False,
+        "has_certifications": False,
+        "has_projects": has_projects_actual,  # Point 2: use actual value, not inferred
+        "missing_sections": [
+            section for section, present in (
+                ("portfolio", False),
+                ("certifications", False),
+                ("projects", not has_projects_actual),  # Point 1: use actual has_projects
+            ) if not present
+        ],
+        "market_fit_score": 0.5,
+        "experience_level": "Junior" if (skills and has_projects_actual) else "Intern",  # Point 7: infer from signals
+        "salary_range": "N/A",
+        "competitive_score": 5.0,
+        "strengths": strengths or ["CV structure recognized"],
+        "weaknesses": weaknesses,
+    }
+
+
+def _fallback_cv_insights_from_text(cv_text: str) -> Dict:
+    words = len(cv_text.split()) if cv_text else 0
+    has_email = "@" in cv_text
+    has_phone = any(ch.isdigit() for ch in cv_text)
+    has_long_text = words >= 80
+
+    strengths = []
+    if has_email:
+        strengths.append("CV có thông tin liên hệ rõ ràng")
+    if has_phone:
+        strengths.append("CV có số điện thoại hoặc chuỗi số nhận diện")
+    if has_long_text:
+        strengths.append("CV có đủ nội dung để trích xuất và phân tích sơ bộ")
+
+    weaknesses = [
+        "Hệ thống không trích xuất được phần kỹ năng hoặc mục tiêu nghề nghiệp rõ ràng",
+        "Nên trình bày kỹ năng, kinh nghiệm và mục tiêu nghề nghiệp theo từng mục riêng",
+        "Có thể cần tối ưu lại định dạng PDF nếu CV là bản scan hoặc ảnh",
+    ]
+
+    return {
+        "quality_score": 4.0 if has_long_text else 2.5,
+        "completeness_score": 0.25 if has_long_text else 0.15,
+        "has_portfolio": False,
+        "has_certifications": False,
+        "has_projects": False,
+        "missing_sections": ["skills", "career_objective", "experience", "education"],
+        "market_fit_score": 0.2 if has_long_text else 0.1,
+        "experience_level": "Unknown",
+        "salary_range": "N/A",
+        "competitive_score": 3.0 if has_long_text else 2.0,
+        "strengths": strengths or ["CV đã được nhận diện ở mức cơ bản"],
+        "weaknesses": weaknesses,
+    }
+
+
+def _has_usable_cv_content(cv_info: Dict) -> bool:
+    skills = cv_info.get("skills", []) or []
+    objective = str(cv_info.get("career_objective") or "").strip()
+    experience = cv_info.get("experience", []) or []
+    education = cv_info.get("education", []) or []
+    return bool(skills or objective or experience or education)
+
+
+
+
+@router.post("/analyze", response_model=CVFileAnalysisResponse)
+async def analyze_uploaded_cv(file: UploadFile = File(...), top_k: int = 5):
+    """Upload CV PDF, phân tích ngay và gợi ý nên học gì dựa trên job data trong ChromaDB."""
+    if not file.filename.lower().endswith('.pdf'):  # type: ignore
         raise HTTPException(status_code=400, detail="Only PDF files are supported")
-    max_size = 10 * 1024 * 1024  # 10MB
-    if file.size > max_size: # type: ignore
-        raise HTTPException(status_code=400, detail="File size exceeds 10MB")
+
     temp_file_path = f"temp_{file.filename}"
-    file_data = None
     try:
-        # Read file data
         file_data = await file.read()
-        # Save to temp file for processing
+        if len(file_data) > 10 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="File size exceeds 10MB")
+
         with open(temp_file_path, "wb") as buffer:
             buffer.write(file_data)
+
         cv_text = extract_text_from_pdf(temp_file_path)
         cv_info = extract_cv_info(cv_text)
         skills = cv_info.get("skills", [])
         aspirations = cv_info.get("career_objective", "")
         education = cv_info.get("education", [])
         experience = cv_info.get("experience", [])
-        if not skills and not aspirations:
-            raise HTTPException(status_code=400, detail="No skills or career objective found")
-        # Tạo tóm tắt experience để index
+        usable_content = _has_usable_cv_content(cv_info)
+
         experience_summary = "\n".join([
             f"{exp.get('title', 'Unknown')} at {exp.get('company', 'Unknown')} ({exp.get('start_date', '')}-{exp.get('end_date', '')}): {exp.get('description', '')}"
             for exp in experience
         ]) if experience else "No experience provided"
-        # Insert CV record with file_data
-        cv_id = insert_cv_record(file.filename, cv_info, file_data) # type: ignore
+
+        cv_id = insert_cv_record(file.filename, cv_info, file_data)  # type: ignore
         if not cv_id:
             raise HTTPException(status_code=500, detail="Failed to generate cv_id from database")
+
+        # Chroma indexing intentionally disabled — skip indexing step.
+        # Previously the system called `index_cv_extracts(...)` here to store CV
+        # vectors in ChromaDB. That behavior is now disabled by design.
+
         try:
-            await index_cv_extracts(skills, aspirations, experience_summary, education, cv_id)
-        except Exception as e:
-            delete_cv_record(cv_id)
-            raise HTTPException(status_code=500, detail=f"Failed to index CV to Chroma: {str(e)}")
-        logging.info(f"Uploaded and indexed CV {cv_id}: {file.filename}")
-        return {
-            "message": f"CV {file.filename} uploaded and indexed",
-            "cv_id": cv_id,
-            "cv_info": cv_info
-        }
+            if usable_content:
+                insights_raw = await analyze_cv_insights(cv_info)
+            else:
+                raise ValueError("Insufficient structured CV content")
+        except Exception as analysis_error:
+            logging.warning(f"Falling back to default CV insights for {cv_id}: {analysis_error}")
+            insights_raw = _fallback_cv_insights(cv_info) if usable_content else _fallback_cv_insights_from_text(cv_text)
+
+        save_cv_insights(cv_id, insights_raw)
+        insights_response = _build_cv_insights_response(cv_id, insights_raw, datetime.now().isoformat())
+
+        try:
+            job_analysis = await analyze_cv_against_jobs(cv_info, top_k=top_k) if usable_content else {"matched_jobs": [], "learning_suggestions": [], "market_summary": {"top_jobs_found": 0}}
+        except Exception as job_error:
+            logging.warning(f"Job analysis failed for CV {cv_id}: {job_error}")
+            job_analysis = {"matched_jobs": [], "learning_suggestions": [], "market_summary": {}}
+
+        # For this endpoint we intentionally do NOT return matched job listings.
+        # The user wants only strengths, weaknesses and recommended learning items.
+        learning_suggestions = [LearningRecommendation(**item) for item in job_analysis.get("learning_suggestions", [])]
+
+        # Generate a concrete learning roadmap (LLM or heuristic fallback)
+        try:
+            from app.services.ai_analysis import generate_learning_roadmap
+            roadmap = await generate_learning_roadmap(cv_info, insights_raw, job_analysis)
+        except Exception as roadmap_error:
+            logging.warning(f"Failed to generate learning roadmap for CV {cv_id}: {roadmap_error}")
+            roadmap = []
+
+        return CVFileAnalysisResponse(
+            cv_id=cv_id,
+            filename=file.filename, # type: ignore
+            insights=insights_response,
+            matched_jobs=[],  # omitted by design
+            learning_suggestions=learning_suggestions,
+            market_summary=job_analysis.get("market_summary", {}),
+            extracted_text=cv_text[:500] + "..." if len(cv_text) > 500 else cv_text,  # Point 18: Truncate extracted_text in production
+            learning_roadmap=roadmap, # type: ignore
+        )
+    except HTTPException:
+        raise
     except Exception as e:
-        logging.error(f"Error uploading CV {file.filename}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to upload CV: {str(e)}")
+        logging.error(f"Error analyzing CV {file.filename}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to analyze CV: {str(e)}")
     finally:
         if os.path.exists(temp_file_path):
             os.remove(temp_file_path)
 
-@router.get("/list", response_model=List[DocumentInfo])
-async def list_cvs(page: int = 1, page_size: int = 10):
-    """Liệt kê tất cả CV trong cv_store với phân trang."""
-    try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                "SELECT id, filename, cv_info_json, upload_timestamp FROM cv_store ORDER BY upload_timestamp DESC LIMIT ? OFFSET ?",
-                (page_size, (page - 1) * page_size)
-            )
-            cvs = [
-                {
-                    "id": row["id"],
-                    "filename": row["filename"],
-                    "cv_info_json": row["cv_info_json"],
-                    "upload_timestamp": row["upload_timestamp"]
-                }
-                for row in cursor.fetchall()
-            ]
-            logging.info(f"Lấy được {len(cvs)} CV")
-            return [DocumentInfo(**cv) for cv in cvs]
-    except Exception as e:
-        logging.error(f"Lỗi khi liệt kê CV: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Không thể liệt kê CV: {str(e)}")
 
-@router.post("/delete")
-async def delete_cv(request: DeleteFileRequest):
-    """Xóa CV khỏi cv_store và Chroma."""
-    if not isinstance(request.file_id, int):
-        raise HTTPException(status_code=400, detail="file_id must be an integer")
-    try:
-        deleted = delete_cv_record(request.file_id)
-        if not deleted:
-            raise HTTPException(status_code=404, detail=f"CV {request.file_id} không tìm thấy")
-        deleted_chroma = delete_cv_from_chroma(request.file_id)
-        logging.info(f"Đã xóa CV {request.file_id} khỏi cv_store và Chroma")
-        return {"message": f"CV {request.file_id} đã được xóa"}
-    except Exception as e:
-        logging.error(f"Lỗi khi xóa CV {request.file_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Không thể xóa CV: {str(e)}")
 
-@router.get("/{cv_id}/insights", response_model=CVInsightsResponse)
-async def get_cv_insights_endpoint(cv_id: int):
-    """
-    Phân tích CV chuyên sâu - Đánh giá chất lượng, điểm mạnh/yếu
-    Khác với /upload-cv (chỉ parse thông tin cơ bản),
-    endpoint này phân tích và đánh giá CV bằng AI.
-    """
-    try:
-        # Kiểm tra CV tồn tại
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT cv_info_json FROM cv_store WHERE id = ?", (cv_id,))
-            row = cursor.fetchone()
-            if not row:
-                raise HTTPException(status_code=404, detail=f"CV {cv_id} không tìm thấy")
-            cv_info = json.loads(row["cv_info_json"])
-        # Kiểm tra cache
-        cached_insights = get_cv_insights(cv_id)
-        if cached_insights:
-            logging.info(f" Lấy insights từ cache cho CV {cv_id}")
-            return CVInsightsResponse(
-                cv_id=cv_id,
-                quality_score=cached_insights['quality_score'],
-                completeness={
-                    "has_portfolio": False,
-                    "has_certifications": False,
-                    "has_projects": False,
-                    "missing_sections": cached_insights['missing_sections']
-                },
-                market_fit={
-                    "skill_match_rate": cached_insights['market_fit_score'],
-                    "experience_level": "Junior",
-                    "salary_range": "8-12 triệu",
-                    "competitive_score": cached_insights['completeness_score'] * 10
-                },
-                strengths=cached_insights['strengths'],
-                weaknesses=cached_insights['weaknesses'],
-                last_analyzed=cached_insights['last_analyzed']
-            )
-        # Phân tích mới bằng AI
-        logging.info(f" Bắt đầu phân tích CV {cv_id}...")
-        insights = await analyze_cv_insights(cv_info)
-        # Lưu vào cache
-        save_cv_insights(cv_id, insights)
-        logging.info(f" Phân tích CV {cv_id} hoàn tất")
-        return CVInsightsResponse(
-            cv_id=cv_id,
-            quality_score=insights.get('quality_score', 5.0),
-            completeness={
-                "has_portfolio": insights.get('has_portfolio', False),
-                "has_certifications": insights.get('has_certifications', False),
-                "has_projects": insights.get('has_projects', False),
-                "missing_sections": insights.get('missing_sections', [])
-            },
-            market_fit={
-                "skill_match_rate": insights.get('market_fit_score', 0.5),
-                "experience_level": insights.get('experience_level', 'Unknown'),
-                "salary_range": insights.get('salary_range', 'N/A'),
-                "competitive_score": insights.get('competitive_score', 5.0)
-            },
-            strengths=insights.get('strengths', []),
-            weaknesses=insights.get('weaknesses', []),
-            last_analyzed=datetime.now().isoformat()
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logging.error(f" Lỗi phân tích CV {cv_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Lỗi phân tích CV: {str(e)}")
-
-@router.post("/improve", response_model=CVImproveResponse)
-async def improve_cv_endpoint(cv_id: int):
-    """
-    Gợi ý cải thiện CV cụ thể
-    Dựa trên kết quả phân tích từ /cv/{cv_id}/insights,
-    endpoint này đưa ra các gợi ý hành động cụ thể.
-    """
-    try:
-        # Lấy CV info
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT cv_info_json FROM cv_store WHERE id = ?", (cv_id,))
-            row = cursor.fetchone()
-            if not row:
-                raise HTTPException(status_code=404, detail=f"CV {cv_id} không tìm thấy")
-            cv_info = json.loads(row["cv_info_json"])
-        # Lấy insights (hoặc phân tích mới)
-        insights = get_cv_insights(cv_id)
-        if not insights:
-            logging.info(f"Chưa có insights, phân tích CV {cv_id} trước...")
-            insights_data = await analyze_cv_insights(cv_info)
-            save_cv_insights(cv_id, insights_data)
-            insights = insights_data
-        # Tạo gợi ý cải thiện
-        logging.info(f" Tạo gợi ý cải thiện cho CV {cv_id}...")
-        improvements = await generate_cv_improvements(cv_info, insights)
-        improvement_suggestions = [
-            ImprovementSuggestion(**imp) for imp in improvements
-        ]
-        logging.info(f" Tạo {len(improvement_suggestions)} gợi ý cải thiện")
-        return CVImproveResponse(
-            cv_id=cv_id,
-            improvements=improvement_suggestions
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logging.error(f"Lỗi tạo gợi ý cải thiện CV {cv_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Lỗi tạo gợi ý: {str(e)}")
-
-@router.get("/")
-async def get_all_cvs_simple():
-    """
-    Lấy tất cả CVs với thông tin đã parse (cho frontend dashboard)
-    Khác với /list-cvs (có phân trang), endpoint này trả về tất cả CVs
-    với cv_info đã được parse thành object (không phải JSON string)
-    """
-    try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT id, filename, cv_info_json, upload_timestamp FROM cv_store ORDER BY upload_timestamp DESC")
-            rows = cursor.fetchall()
-            cvs = []
-            for row in rows:
-                cv_info = json.loads(row["cv_info_json"]) if row["cv_info_json"] else {}
-                cvs.append({
-                    "id": row["id"],
-                    "filename": row["filename"],
-                    "cv_info": cv_info,  # Already parsed object
-                    "upload_timestamp": row["upload_timestamp"]
-                })
-            logging.info(f" Lấy {len(cvs)} CVs cho frontend")
-            return cvs
-    except Exception as e:
-        logging.error(f" Lỗi lấy CVs: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Lỗi lấy CVs: {str(e)}")

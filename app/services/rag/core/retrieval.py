@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 from rank_bm25 import BM25Okapi  # type: ignore
 
 from ..rerankers.cross_encoder import CrossEncoderReranker
+from ..rerankers.rerank_presets import get_weights
 from ..infra.dedupe import DedupeStats, dedupe_and_diversify
 from ..infra.embedding import EmbeddingService
 from ..infra.fallback import detect_low_confidence, fallback_observability_payload
@@ -429,6 +430,7 @@ class RAGRetrievalService:
 		self.fulltext_store = RAGFullTextStore() if RAG_USE_FULLTEXT_SEARCH else None
 		self.cross_encoder = CrossEncoderReranker() if RAG_USE_CROSS_ENCODER else None
 		self.metrics = RetrievalMetrics()
+		self.weights = get_weights(RAG_RERANK_PRESET)
 		self.last_profile = resolve_profile(RAG_DEFAULT_PROFILE)
 		self.last_dedupe_stats = DedupeStats(0, 0, 0, 0, 0)
 		self.last_fallback: Dict[str, Any] = fallback_observability_payload("none", "not-run", enabled=False)
@@ -510,9 +512,9 @@ class RAGRetrievalService:
 		# assemble reranked items with per-component breakdown
 		rerank_started = time.perf_counter()
 		reranked: List[RetrievedChunk] = []
-		# Detect if this is a job-style query; if so, restrict scoring to title+description
+		# Detect if this is a job-style query; if so, keep backend job fields active.
 		is_job_search = self._looks_like_job_search(query_plan.get("terms", set()))
-		include_fields_arg: Optional[List[str]] = ["title", "description"] if is_job_search else None
+		include_fields_arg: Optional[List[str]] = ["title", "description", "location", "company", "category", "salary", "job_type", "recency"] if is_job_search else None
 		for idx, candidate in enumerate(candidates):
 			metadata = candidate.get("metadata") or {}
 			metadata_scores = compute_metadata_scores(query_plan["terms"], metadata, boost_plan)
@@ -528,8 +530,11 @@ class RAGRetrievalService:
 					title=metadata_scores.title,
 					company=metadata_scores.company,
 					description=metadata_scores.description,
-					skills=metadata_scores.skills,
 					category=metadata_scores.category,
+					location=getattr(metadata_scores, "location", 0.0),
+					salary=getattr(metadata_scores, "salary", 0.0),
+					job_type=getattr(metadata_scores, "job_type", 0.0),
+					recency=getattr(metadata_scores, "recency", 0.0),
 					entity_bias=1.0 if self._detect_entity_bias(query_plan["terms"]) == metadata.get("entity_type") else 0.0, # type: ignore
 					fulltext=fulltext_score,  # type: ignore
 				),
@@ -576,9 +581,26 @@ class RAGRetrievalService:
 
 		rerank_latency_ms = round((time.perf_counter() - rerank_started) * 1000, 2)
 		if query_plan.get("city_hint"):
-			reranked = [item for item in reranked if self._matches_city_hint(item.metadata, query_plan.get("city_hint"))] # type: ignore
+			city_filtered = [item for item in reranked if self._matches_city_hint(item.metadata, query_plan.get("city_hint"))] # type: ignore
+			if city_filtered:
+				reranked = city_filtered
+			else:
+				logger.info(
+					"rag.retrieval.city_filter.relaxed query=%r city_hint=%s candidates=%s",
+					query[:120],
+					query_plan.get("city_hint"),
+					len(reranked),
+				)
 
-		reranked = [item for item in reranked if self._has_minimum_relevance(item.metadata, q_terms)]
+		relevance_filtered = [item for item in reranked if self._has_minimum_relevance(item, q_terms)]
+		if relevance_filtered:
+			reranked = relevance_filtered
+		elif reranked:
+			logger.info(
+				"rag.retrieval.relevance_filter.relaxed query=%r candidates=%s",
+				query[:120],
+				len(reranked),
+			)
 		selected = dedupe_and_diversify(
 			reranked,
 			top_k=min(profile.top_k, RAG_TOP_K),
@@ -625,7 +647,8 @@ class RAGRetrievalService:
 		self._cache[cache_key] = (now, result)
 		return result
 
-	def _resolve_runtime_profile(self, query: str, requested_profile: Optional[str]) -> RetrievalProfile:
+	@classmethod
+	def _resolve_runtime_profile(cls, query: str, requested_profile: Optional[str]) -> RetrievalProfile:
 		def _with_runtime_normalization(profile: RetrievalProfile) -> RetrievalProfile:
 			if not RAG_NORMALIZATION_STRATEGY or profile.normalization == RAG_NORMALIZATION_STRATEGY:
 				return profile
@@ -641,7 +664,7 @@ class RAGRetrievalService:
 			return _with_runtime_normalization(resolve_profile("recommendation"))
 		if {"salary", "location", "remote", "hybrid", "onsite"} & terms:
 			return _with_runtime_normalization(resolve_profile("strict-job-search"))
-		if self._looks_like_job_search(terms):
+		if cls._looks_like_job_search(terms):
 			return _with_runtime_normalization(resolve_profile("strict-job-search"))
 		return _with_runtime_normalization(resolve_profile(RAG_DEFAULT_PROFILE))
 
@@ -874,15 +897,25 @@ class RAGRetrievalService:
 		return False
 
 	@staticmethod
-	def _has_minimum_relevance(metadata: Dict[str, Any], query_terms: set[str]) -> bool:
+	def _has_minimum_relevance(candidate: Any, query_terms: set[str]) -> bool:
 		if not query_terms:
 			return True
 
+		if isinstance(candidate, dict):
+			metadata = candidate.get("metadata") or {}
+			text = str(candidate.get("text") or "")
+		else:
+			metadata = getattr(candidate, "metadata", {}) or {}
+			text = str(getattr(candidate, "text", "") or "")
+
 		field_terms = set()
-		for key in ("title", "company", "skills", "category", "location", "city", "job_type", "work_type", "level"):
+		for key in ("title", "company", "category", "location", "city", "job_type", "work_type", "level"):
 			value = metadata.get(key)
 			if value:
 				field_terms.update(extract_terms(str(value)))
+
+		if text:
+			field_terms.update(extract_terms(text))
 
 		return len(query_terms.intersection(field_terms)) > 0
 

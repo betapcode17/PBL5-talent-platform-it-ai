@@ -14,13 +14,12 @@ from fastapi.staticfiles import StaticFiles
 
 from app.logging_config import setup_logging
 from app.middleware.error_handler import setup_error_handlers
-from app.routers import candidates
 from app.routers.chatbot import router as chatbot_router
 from app.routers.cv import router as cv_router
-from app.routers.jobs import router as jobs_router
+from app.routers.candidates import router as candidates_router
 from app.routers.matching import router as matching_router
-from app.routers.utils import router as utils_router
 from app.services.chatbot_service import get_chatbot
+from app.services.conversation_service import ensure_connection as ensure_conversation_db_connection
 
 os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
@@ -42,11 +41,9 @@ app.add_middleware(
 )
 
 app.include_router(cv_router, prefix="/cv", tags=["CV"])
-app.include_router(jobs_router, prefix="/jobs", tags=["Jobs"])
 app.include_router(matching_router, prefix="/matching", tags=["Matching"])
 app.include_router(chatbot_router)
-app.include_router(utils_router, tags=["Utils"])
-app.include_router(candidates.router, prefix="/candidates", tags=["Candidates"])
+app.include_router(candidates_router, prefix="/candidates", tags=["Candidates"])
 
 static_path = PROJECT_ROOT / "static"
 if static_path.exists():
@@ -62,6 +59,12 @@ logger.info("app.error_handlers.ready")
 @app.on_event("startup")
 async def startup_event() -> None:
     import asyncio
+
+    await ensure_conversation_db_connection()
+
+    if os.getenv("SKIP_MODEL_PRELOAD", "0") == "1":
+        logger.info("startup.preload.skipped skip_model_preload=1")
+        return
 
     async def _preload_models() -> None:
         try:

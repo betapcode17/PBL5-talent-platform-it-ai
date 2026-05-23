@@ -3,12 +3,15 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException, Query, Request
 from typing import List, Optional
 from app.services.match_explain import build_why_match
-from app.models.core import MatchedJob
+from app.models.responses import MatchedJob
+from app.models.core import Suggestion
 from app.models.responses import (
     ApplicationItem, MatchExplanation, MatchInput, MatchResponse, ApplyJobInput, ApplicationResponse, ApplicationsResponse
 )
-from app.services.chroma_utils import index_cv_extracts
-from app.services.rag_matching import match_cv
+# Chroma indexing utilities are provided by app.services.chroma_utils when needed;
+# direct `index_cv_extracts` helper is not required here. If indexing is needed,
+# call the appropriate service function from the CV router or chroma utils.
+import os
 from app.services.db_utils import (
     get_all_cvs, get_db_connection, get_cached_matches, get_filtered_jobs, get_jobs_details_by_ids, insert_cv_record, insert_match_log,
     insert_application, get_applications_by_cv, check_application_exists
@@ -107,7 +110,40 @@ async def match_cv_endpoint(input: MatchInput, request: Request):
         logging.info(f" CV Skills: {len(cv_input.get('skills', []))} skills")
         logging.info(f" CV Experience length: {len(cv_input.get('experience', ''))} chars")
         
-        result = await match_cv(cv_input, filtered_job_ids, session_id)
+        # If Chroma/RAG-based matching is disabled via env, or if the RAG
+        # pipeline fails, fall back to a lightweight DB-only matcher.
+        def _naive_db_match(skills_list, candidate_cv_id, job_ids):
+            jobs = get_jobs_details_by_ids(job_ids) if job_ids else []
+            matches = []
+            skills_norm = {s.strip().lower() for s in (skills_list or [])}
+            for j in jobs:
+                job_skills = {s.strip().lower() for s in str(j.get('skills', '')).split(',') if s.strip()}
+                overlap = skills_norm & job_skills
+                score = 0.0
+                if job_skills:
+                    score = len(overlap) / max(1, len(job_skills))
+                matches.append({
+                    'job_id': j.get('id'),
+                    'match_score': float(score),
+                    'explanation': {'reasons': [f"{len(overlap)} skill(s) overlap"]},
+                    'suggestions': []
+                })
+            return {'matched_jobs': matches, 'suggestions': []}
+
+        result = None
+        if os.getenv('DISABLE_CHROMA_MATCHING', '0') == '1':
+            logging.info('DISABLE_CHROMA_MATCHING=1 — using DB-only fallback matcher')
+            result = _naive_db_match(skills, cv_id, filtered_job_ids)
+        else:
+            try:
+                # Import rag-based matcher lazily to avoid import-time failures
+                import importlib
+                rag_mod = importlib.import_module('app.services.rag_matching')
+                _match_cv = getattr(rag_mod, 'match_cv')
+                result = await _match_cv(cv_input, filtered_job_ids, session_id)
+            except (ModuleNotFoundError, ImportError, AttributeError, Exception) as e:
+                logging.warning(f"RAG match_cv failed or unavailable, falling back to DB matcher: {e}")
+                result = _naive_db_match(skills, cv_id, filtered_job_ids)
         
         #  DEBUG: Log result
         logging.info(f" RAG returned {len(result.get('matched_jobs', []))} matched jobs")
@@ -137,8 +173,10 @@ async def match_cv_endpoint(input: MatchInput, request: Request):
 
         for job in safe_jobs:
             jid = _to_int_job_id(job.get("job_id"))
-            detail = job_map.get(jid)
-            if not jid or not detail:
+            if jid is None:
+                continue
+            detail = job_map.get(int(jid))
+            if not detail:
                 continue
 
             # score
@@ -161,7 +199,7 @@ async def match_cv_endpoint(input: MatchInput, request: Request):
                     job_url=detail.get("job_url", ""),
                     work_location=detail.get("work_location", ""),
                     salary=detail.get("salary", ""),
-                    deadline=normalize_deadline(detail.get("deadline")),
+                    deadline=normalize_deadline(str(detail.get("deadline") or "")),
                     benefits=detail.get("benefits", ""),
                     job_type=detail.get("work_type", ""),
                     experience_required=detail.get("experience", ""),
@@ -202,10 +240,7 @@ async def match_cv_endpoint(input: MatchInput, request: Request):
             education=[],
             experience=[],
             matched_jobs=[],
-            suggestions=[{
-                "skill_or_experience": "N/A",
-                "suggestion": f"Failed to match jobs: {str(e)}"
-            }],
+            suggestions=[Suggestion(skill_or_experience="N/A", suggestion=f"Failed to match jobs: {str(e)}")],
             session_id=session_id,
             model=input.model
         )

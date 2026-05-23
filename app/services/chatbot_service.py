@@ -29,7 +29,7 @@ class ChatbotRAGService:
         extra_context: Optional[str] = None,
         retrieval_profile: Optional[str] = None,
     ) -> Dict[str, Any]:
-        history = conversation_service.get_recent_history(conversation_id=conversation_id, max_turns=6)
+        history = await conversation_service.get_recent_history(conversation_id=conversation_id, max_turns=6)
         logger.info(
             "chatbot.service.chat conversation_id=%s history_turns=%s extra_context=%s retrieval_profile=%s",
             conversation_id,

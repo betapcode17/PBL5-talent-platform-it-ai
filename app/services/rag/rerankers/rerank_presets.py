@@ -46,10 +46,10 @@ class RerankWeights:
         )
 
 
-BALANCED_WEIGHTS = RerankWeights(0.35, 0.30, 0.12, 0.08, 0.08, 0.08, 0.05, 0.02)
-SEMANTIC_FIRST_WEIGHTS = RerankWeights(0.5, 0.15, 0.12, 0.08, 0.08, 0.08, 0.05, 0.02)
-BM25_FIRST_WEIGHTS = RerankWeights(0.2, 0.5, 0.12, 0.08, 0.08, 0.08, 0.02, 0.0)
-HYBRID_STRICT_WEIGHTS = RerankWeights(0.45, 0.45, 0.05, 0.03, 0.03, 0.02, 0.0, 0.0)
+BALANCED_WEIGHTS = RerankWeights(0.35, 0.30, 0.10, 0.07, 0.07, 0.06, 0.03, 0.02)
+SEMANTIC_FIRST_WEIGHTS = RerankWeights(0.5, 0.15, 0.10, 0.07, 0.07, 0.06, 0.03, 0.02)
+BM25_FIRST_WEIGHTS = RerankWeights(0.2, 0.5, 0.10, 0.07, 0.07, 0.06, 0.0, 0.0)
+HYBRID_STRICT_WEIGHTS = RerankWeights(0.45, 0.45, 0.04, 0.02, 0.02, 0.02, 0.0, 0.0)
 
 PRESETS: Dict[str, RerankWeights] = {
     "balanced": BALANCED_WEIGHTS.normalize(),
